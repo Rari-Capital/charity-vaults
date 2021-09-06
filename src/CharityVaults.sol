@@ -23,7 +23,7 @@ contract CharityVaults {
     /// @return vault The newly deployed Vault contract.
     function deployVault(ERC20 underlying) external returns (Vault vault) {
         // relay call to our internal VaultFactory
-        factor.deployVault(underlying);
+        factory.deployVault(underlying);
     }
 
     /*///////////////////////////////////////////////////////////////
@@ -48,5 +48,19 @@ contract CharityVaults {
         return factory.isVaultDeployed(vault);
     }
 
-    
+    /*///////////////////////////////////////////////////////////////
+                         USER ACTION FUNCTIONS
+    //////////////////////////////////////////////////////////////*/
+    /// @notice Deposit the vault's underlying token to mint fvTokens.
+    /// @param underlyingAmount The amount of the underlying token to deposit.
+    /// @param underlying The underlying ERC20 token the Vault earns yield on.
+    function deposit(uint256 underlyingAmount, ERC20 underlying) external {
+        // Get the respective Vault
+        Vault vault = getVaultFromUnderlying(underlying);
+        
+        // TODO: determine charity rate mechanics 
+
+        // Relay deposit to the respective vault
+        vault.deposit(underlyingAmount);
+    }
 }
