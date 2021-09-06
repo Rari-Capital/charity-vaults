@@ -1,6 +1,6 @@
 # charity-vaults
 
-Share interest from Fuse Vaults to charities, friends, and more.
+Share interest from Fuse Vaults with charities, friends, and more.
 
 ## Getting Started
 
