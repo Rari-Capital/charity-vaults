@@ -9,59 +9,43 @@ import "vaults/VaultFactory.sol";
 /// @author Transmissions11, JetJadeja, some_random_usc_kids
 /// @notice Charity wrapper for vaults/VaultFactory.
 contract CharityVaults {
-    /// Mirror Transmissions11 + JetJadeja VaultFactory implementation
-    // using Bytes32AddressLib for *;
 
     VaultFactory public factory = new VaultFactory();
 
-    /*///////////////////////////////////////////////////////////////
-                           STATEFUL FUNCTIONS
-    //////////////////////////////////////////////////////////////*/
-
-    /// @notice Deploys a new Vault contract using the internal VaultFactory.
-    /// @dev This will revert if a vault with the token has already been created.
-    /// @param underlying Address of the ERC20 token that the Vault will earn yield on.
-    /// @return vault The newly deployed Vault contract.
-    function deployVault(ERC20 underlying) external returns (Vault) {
-        // relay call to our internal VaultFactory
-        return factory.deployVault(underlying);
-    }
-
-    /*///////////////////////////////////////////////////////////////
-                            VIEW FUNCTIONS
-    //////////////////////////////////////////////////////////////*/
-
-    /// @notice Computes a Vault's address from its underlying token.
-    /// @dev The Vault returned may not have been deployed yet.
-    /// @param underlying The underlying ERC20 token the Vault earns yield on.
-    /// @return The Vault that supports this underlying token.
-    function getVaultFromUnderlying(ERC20 underlying) internal view returns (Vault) {
-        // relay call to our internal VaultFactory
-        return factory.getVaultFromUnderlying(underlying);
-    }
-
-    /// @notice Returns if a vault at an address has been deployed yet.
-    /// @dev This function is useful to check the return value of
-    /// getVaultFromUnderlying, as it may return vaults that have not been deployed yet.
-    /// @param vault The address of the vault that may not have been deployed.
-    /// @return A bool indicated whether the vault has been deployed already.
-    function isVaultDeployed(Vault vault) external view returns (bool) {
-        return factory.isVaultDeployed(vault);
-    }
-
-    /*///////////////////////////////////////////////////////////////
-                         USER ACTION FUNCTIONS
-    //////////////////////////////////////////////////////////////*/
     /// @notice Deposit the vault's underlying token to mint fvTokens.
     /// @param underlyingAmount The amount of the underlying token to deposit.
     /// @param underlying The underlying ERC20 token the Vault earns yield on.
     function deposit(uint256 underlyingAmount, ERC20 underlying) external {
         // Get the respective Vault
-        Vault vault = getVaultFromUnderlying(underlying);
+        Vault vault = factory.getVaultFromUnderlying(underlying);
         
         // TODO: determine charity rate mechanics 
 
         // Relay deposit to the respective vault
         vault.deposit(underlyingAmount);
+    }
+
+    /// @notice Burns fvTokens and sends underlying tokens to the caller.
+    /// @param amount The amount of fvTokens to redeem for underlying tokens.
+    function withdraw(uint256 amount, ERC20 underlying) external {
+        // Get the respective Vault
+        Vault vault = factory.getVaultFromUnderlying(underlying);
+
+        // TODO: determine charity rate withdraw mechanics 
+
+        // Relay withdraw to the respective vault
+        vault.withdraw(amount);
+    }
+
+    /// @notice Fetches the user's balance for the Vault with the provided underlying asset
+    /// @param user A given EOA.
+    /// @param underlying The underlying ERC20 token the Vault earns yield on.
+    /// @return uint256 The balance of the user for the specified vault
+    function getVaultBalance(address user, ERC20 underlying) external view returns (uint256) {
+        // Get the respective Vault
+        Vault vault = factory.getVaultFromUnderlying(underlying);
+
+        // Return the balanceOf user
+        return vault.balanceOf(user);
     }
 }
