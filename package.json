@@ -1,0 +1,19 @@
+{
+  "name": "@rari-capital/charity-vaults",
+  "version": "1.0.0",
+  "description": "Share interest from Fuse Vaults to charities, friends, and more.",
+  "files": [
+    "src/**/*.sol"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Rari-Capital/charity-vaults.git"
+  },
+  "scripts": {
+    "lint": "prettier --write src/**/*.sol"
+  },
+  "devDependencies": {
+    "prettier": "^2.3.1",
+    "prettier-plugin-solidity": "^1.0.0-beta.13"
+  }
+}

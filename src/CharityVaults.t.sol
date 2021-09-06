@@ -11,11 +11,13 @@ contract CharityVaultsTest is DSTest {
         vaults = new CharityVaults();
     }
 
-    function testFail_basic_sanity() public {
-        assertTrue(false);
-    }
+    // function testFail_basic_sanity() public {
+    //     assertTrue(false);
+    // }
 
     function test_basic_sanity() public {
-        assertTrue(true);
+        assertTrue(
+            !vaults.factory().isVaultDeployed(Vault(payable(address(0))))
+        );
     }
 }
