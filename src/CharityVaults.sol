@@ -12,14 +12,61 @@ contract CharityVaults {
 
     VaultFactory public factory = new VaultFactory();
 
+    /// @notice Creates a CharityVault 
+    constructor() {
+        charities = new Charity[]();
+    }
+
+    /// TODO: Internal store to track user-specified rates
+    /// TODO: Map referals to their Charity of choice
+
+
+    /// @notice Charity Endpoint
+    struct Charity {
+        string name;
+        address donation_address;
+    }
+    
+    /// @notice A list of approved charities
+    Charity[] private charities;
+
+    /*///////////////////////////////////////////////////////////////
+                                 EVENTS
+    //////////////////////////////////////////////////////////////*/
+
+    /// @notice Emitted after a Charity is added to the list of approved charities
+    /// @param charity The new Charity Object added
+    event CharityAdded(Charity charity);
+
+    /// @notice Emitted after a Charity is removed from the list of approved charities
+    /// @param charity The Charity Object removed
+    event CharityRemoved(Charity charity);
+
+
+    /// @notice Allows a given owner to add to the list of approved charities
+    /// @param charity The new Charity Object to be added
+    function addCharity(Charity charity) external onlyOwner {
+        charities.push(charity);
+        emit CharityAdded(charity);
+    }
+
+    /// @notice Allows a given owner to remove a charity from the list of approved charities
+    /// @param index The index of the charity object to be removed
+    function removeCharity(uint256 index) external onlyOwner {
+        Charity charity = charities[index];
+        charities[index] = charities[charities.length - 1];
+        charities.pop();
+        emit CharityRemoved(charity);
+    }
+
     /// @notice Deposit the vault's underlying token to mint fvTokens.
     /// @param underlyingAmount The amount of the underlying token to deposit.
     /// @param underlying The underlying ERC20 token the Vault earns yield on.
     function deposit(uint256 underlyingAmount, ERC20 underlying) external {
         // Get the respective Vault
         Vault vault = factory.getVaultFromUnderlying(underlying);
-        
-        // TODO: determine charity rate mechanics 
+
+        // TODO: determine charity rate mechanics
 
         // Relay deposit to the respective vault
         vault.deposit(underlyingAmount);
