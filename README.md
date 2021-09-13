@@ -11,19 +11,45 @@ make
 ```
 
 
-### Questions
+### FAQS
 
-Are users able to permissionlessly create Vaults?
+Q: Are users able to permissionlessly create Vaults?
+```
+A:
+```
 
-How do we envision deposits in a Vault from a ui perspective?
+Q: How do we envision deposits in a Vault from a ui perspective?
 Say I deposit usdc with one referral link for Charity A with a gift rate of 10% of any interest earned.
 Then I deposit usdc with a different referral link for Charity B with a gift rate of 20% of any interest earned.
 Will the I see a list of the deposits on the UI with each respective interest earned, amount, and gift rate + charity? And I basically have the ability to withdraw x amount from each deposit in one transaction?
+```
+A:
+```
 
 Should referrals have the option to choose the underlying asset or does the charity automatically take any donations?
+```
+A:
+```
 
 Should referrals have the gift rate optionally set by the charity or it should always be up to the user depositing?
 (We _could_ always just not have the ui for the charity to set the rate for a given referral and always allow the user to pass in a gift rate and we verify that the charity didn't already set the rate manually and in that case revert the deposit tx)
+```
+A:
+```
+
+*If* the charity is able to set the gift rate, are they able to change the rate for a given referral?
+```
+A:
+```
+
+*If* the charity is able to set the gift rate, is anybody able to create a referral link for that charity with a given rate? On the other hand if the charity isn't able to set the gift rate, is a referral link automatically generated for a given charity when a charity is added to the CharityVaults contract?
+(from the project description it sounds like it can be anyone)
+```
+A:
+```
 
 Is anybody able to be a charity - like is adding a charity permissionless?
-
+(from the project description it sounds like it can be anyone)
+```
+A:
+```
