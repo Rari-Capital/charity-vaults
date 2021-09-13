@@ -57,6 +57,8 @@ contract CharityVaults {
     // TODO: *If* the charity is able to set the gift rate, are they able to change the rate for a given referral?
         // TODO: then, we would need edit referral logic
 
+
+    // TODO: change this to a mapping from charity_id to Charity
     /// @notice A list of approved charities
     Charity[] private charities;
 
@@ -92,9 +94,12 @@ contract CharityVaults {
         emit CharityRemoved(charity);
     }
 
-
-    // TODO: Edit Charity Function - for changing name and donation_address
-
+    /// @notice Allows an approved charity signatory to edit the charity metadata
+    /// @param charity_id The id for a given charity
+    /// @param name The updated name of a charity
+    function editCharity(uint256 charity_id, string name) external onlyOwner {
+        // TODO: check if the charity_id is valid
+    }
 
     /// @notice Deposit the vault's underlying token to mint fvTokens.
     /// @param underlyingAmount The amount of the underlying token to deposit.
