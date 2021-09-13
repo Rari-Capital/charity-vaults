@@ -20,11 +20,18 @@ contract CharityVaults {
     /// TODO: Internal store to track user-specified rates
     /// TODO: Map referals to their Charity of choice
 
+    /// @notice users can send percents to any address (ex endaoment address)
+    
+    /// TODO: interest is sent on withdraw
+    /// TODO: only the carity vault donation recipient can call the withdraw function to withdraw their interest
+
 
     /// @notice Charity Endpoint
     struct Charity {
         string name;
         address donation_address;
+        /// TODO: add assets in the Charity Vault - then we swap through uniswap v3
+        
     }
     
     /// @notice A list of approved charities
