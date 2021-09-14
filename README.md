@@ -15,7 +15,7 @@ make
 
 Q: Are users able to permissionlessly create Vaults?
 ```
-A:
+A: Should be yes since the VaultFactory `deployVault` function doesn't have any modifiers or anything.
 ```
 
 Q: How do we envision deposits in a Vault from a ui perspective?
