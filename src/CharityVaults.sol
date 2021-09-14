@@ -23,7 +23,7 @@ contract CharityVaults {
         uint256 deposit_id;
         address payable gift_address;
         // TODO: make deposits transferrable through an NFT
-        /// TODO: add assets in the Charity Vault - then we swap through uniswap v3
+        // TODO: add assets in the Charity Vault - then we swap through uniswap v3
     }
 
     /// @notice mapping from deposit_id to Deposit

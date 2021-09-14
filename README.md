@@ -43,7 +43,6 @@ A: Yes, Endaoment confirmed they will be able to take any donations.
 A:
 ```
 
-
 5. Should referrals have the gift rate optionally set by the charity or it should always be up to the user depositing?
 (We _could_ always just not have the ui for the charity to set the rate for a given referral and always allow the user to pass in a gift rate and we verify that the charity didn't already set the rate manually and in that case revert the deposit tx)
 ```
@@ -63,5 +62,15 @@ A:
 
 8. On withdrawal, it doesn't look like we are able to control where the vault.withdraw function sends the funds?
 ```
+A:
+
+
+9. Is there a benefit to storing the Charity data (name, "verified" status) on-chain?
+
+A:
+
+
+10. Should we aim to make the charity vault ownership transferable? Or is maintaining ownership per-address acceptable?
+
 A:
 ```
