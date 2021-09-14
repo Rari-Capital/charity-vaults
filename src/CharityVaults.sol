@@ -18,104 +18,38 @@ contract CharityVaults {
         factory = new VaultFactory(_deployed_vault_factory);
     }
 
-    /// TODO: Internal store to track user-specified rates
-    /// TODO: Map referals to their Charity of choice
-
-    /// @notice users can send percents to any address (ex endaoment address)
-
-    /// TODO: interest is sent on withdraw
-    /// TODO: only the carity vault donation recipient can call the withdraw function to withdraw their interest
-
-    /// @notice Referral
-    struct Referral {
-        uint256 id;
-        uint256 charity_id;
-        // TODO: is this optional - should the charity be able to set the gift_percent at all?
-        bool is_gift_percent_set;
-        uint256 gift_percent;
-    }
-
-    /// @notice mapping from referral id to a Referral Object
-    mapping(uint256 => Referral) public referrals;
-
-    /// @notice Charity
-    struct Charity {
-        uint256 charity_id;
-        string name;
-        address donation_address;
-        address[] approved_referral_creators;
+    /// @notice Deposit
+    struct Deposit {
+        uint256 deposit_id;
+        address payable gift_address;
+        // TODO: make deposits transferrable through an NFT
         /// TODO: add assets in the Charity Vault - then we swap through uniswap v3
     }
 
-    modifier approvedCharityCreators(Charity charity) {
-        require(charity.approved_referral_creators.contains(msg.sender), "msg.sender is not approved for this charity!");
-        _;
-    }
+    /// @notice mapping from deposit_id to Deposit
+    mapping(uint256 => Deposit) deposits;
 
-    // TODO: add Referral Function
-    // TODO: Delete Referral Function
-    // TODO: *If* the charity is able to set the gift rate, are they able to change the rate for a given referral?
-        // TODO: then, we would need edit referral logic
+    /// @notice mapping from user to their deposits
+    mapping(address => uint256[]) users_deposits;
 
-
-    // TODO: change this to a mapping from charity_id to Charity
-    /// @notice A list of approved charities
-    Charity[] private charities;
-
-    /*///////////////////////////////////////////////////////////////
-                                 EVENTS
-    //////////////////////////////////////////////////////////////*/
-
-    /// @notice Emitted after a Charity is added to the list of approved charities
-    /// @param charity The new Charity Object added
-    event CharityAdded(Charity charity);
-
-    /// @notice Emitted after a Charity is removed from the list of approved charities
-    /// @param charity The Charity Object removed
-    event CharityRemoved(Charity charity);
-
-    /// @notice Emitted after a Charity is removed from the list of approved charities
-    /// @param charity The Charity Object removed
-    event CharityEdited(Charity charity);
-
-    /// @notice Allows a given owner to add to the list of approved charities
-    /// @param charity The new Charity Object to be added
-    function addCharity(Charity charity) external onlyOwner {
-        charities.push(charity);
-        emit CharityAdded(charity);
-    }
-
-    /// @notice Allows a given owner to remove a charity from the list of approved charities
-    /// @param index The index of the charity object to be removed
-    function removeCharity(uint256 index) external onlyOwner {
-        Charity charity = charities[index];
-        charities[index] = charities[charities.length - 1];
-        charities.pop();
-        emit CharityRemoved(charity);
-    }
-
-    /// @notice Allows an approved charity signatory to edit the charity metadata
-    /// @param charity_id The id for a given charity
-    /// @param name The updated name of a charity
-    function editCharity(uint256 charity_id, string name) external onlyOwner {
-        // TODO: check if the charity_id is valid
-    }
+    /// @notice track latest deposit_id
+    uint256 max_deposit_id;
 
     /// @notice Deposit the vault's underlying token to mint fvTokens.
     /// @param underlyingAmount The amount of the underlying token to deposit.
     /// @param underlying The underlying ERC20 token the Vault earns yield on.
+    /// @param giftAddress The payable address for the gift interest to be sent to.
+    /// @param giftRate The percent rate for the gift interest.
     function deposit(
         uint256 underlyingAmount,
         ERC20 underlying,
-        uint256 referral_id
+        address payable giftAddress,
+        uint256 giftRate
     ) external {
         // Get the respective Vault
         Vault vault = factory.getVaultFromUnderlying(underlying);
 
-        // TODO: this function should take a list of deposits for various vaults/underlying assets,
-
-        // Fetch the Referral Object from the provided referral_id
-        Referral referral = referrals[referral_id];
+        // TODO: can this function should take a list of deposits for various vaults/underlying assets,
 
         max_deposit_id += 1;
         uint256 deposit_id = max_deposit_id;
@@ -123,9 +57,10 @@ contract CharityVaults {
             deposit_id,
             vault,
             underlyingAmount,
-            referral
+            giftAddress,
+            giftRate
         );
-        user_deposits.push(deposit_id);
+        user_deposits[msg.sender].push(deposit_id);
 
         // Relay deposit to the respective vault
         vault.deposit(underlyingAmount);
@@ -148,8 +83,11 @@ contract CharityVaults {
 
         // TODO: determine charity rate withdraw mechanics
 
-        // Relay withdraw to the respective vault
-        vault.withdraw(amount);
+        // Send the gift amount to the charity
+        // TODO: how to send from the vault to the deposit.gift_address
+
+        // Withdraw the rest to the user
+        // vault.withdraw();
     }
 
     /// @notice Fetches the user's balance for the Vault with the provided underlying asset
