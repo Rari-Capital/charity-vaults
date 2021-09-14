@@ -28,7 +28,7 @@ A:
 
 Should referrals have the option to choose the underlying asset or does the charity automatically take any donations?
 ```
-A:
+A: Yes, Endaoment confirmed they will be able to take any donations.
 ```
 
 Should referrals have the gift rate optionally set by the charity or it should always be up to the user depositing?
