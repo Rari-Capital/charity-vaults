@@ -1,108 +1,119 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity ^0.8.6;
+pragma solidity 0.8.6;
 
-import "vaults/VaultFactory.sol";
+import {ERC20} from "solmate/erc20/ERC20.sol";
+import {Auth} from "solmate/auth/Auth.sol";
+import {SafeERC20} from "solmate/erc20/SafeERC20.sol";
 
-// import {Bytes32AddressLib} from "./libraries/Bytes32AddressLib.sol";
+import {WETH} from "./external/WETH.sol";
+import {CErc20} from "./external/CErc20.sol";
 
-/// @title Fuse Charity Vaults
-/// @author Transmissions11, JetJadeja, Andreas Bigger
-/// @notice Charity wrapper for vaults/Vault.
-contract CharityVaults {
-    /// @dev This factory is already deployed
-    VaultFactory public factory;
+import "./tests/utils/DSTestPlus.sol";
 
-    /// @notice Creates a CharityVault
-    constructor(address _deployed_vault_factory) {
-        charities = new Charity[]();
-        factory = new VaultFactory(_deployed_vault_factory);
+/// @title Fuse Charity Vault (fcvToken)
+/// @author Transmissions11, JetJadeja, [Andreas Bigger, Nicolas Neven](some random usc kids)
+/// @notice Yield bearing token that enables users to swap
+/// their underlying asset to instantly begin earning yield.
+contract CharityVault is Vault {
+    using SafeERC20 for ERC20;
+
+
+    // ?? Either the CharityVault is a Vault ??
+    // ?? Or, it deploys/finds an existing Vault and wraps it managing the fvTokens <> fcvTokens ??
+
+
+    /*///////////////////////////////////////////////////////////////
+                                CONSTANTS
+    //////////////////////////////////////////////////////////////*/
+
+    address payable charity;
+    uint256 feePercent;
+
+    /// @notice Creates a new charity vault based on an underlying token.
+    /// @param _underlying An underlying ERC20 compliant token.
+    /// @param _charity The address of the charity
+    /// @param _feePercent The percent of earned interest to be routed to the Charity
+    constructor(ERC20 _underlying, address payable _charity, uint256 _feePercent)
+        ERC20(
+            // ex: Fuse DAI Vault
+            string(abi.encodePacked("Fuse Charity ", _underlying.name(), " Vault")),
+            // ex: fvDAI
+            string(abi.encodePacked("fcv", _underlying.symbol())),
+            // ex: 18
+            _underlying.decimals()
+        )
+    {
+        underlying = _underlying;
+        charity = _charity;
+        feePercent = _feePercent;
     }
 
-    /// @notice Deposit
-    struct Deposit {
-        uint256 deposit_id;
-        address payable gift_address;
-        // TODO: make deposits transferrable through an NFT
-        // TODO: add assets in the Charity Vault - then we swap through uniswap v3
-    }
+    /*///////////////////////////////////////////////////////////////
+                                 EVENTS
+    //////////////////////////////////////////////////////////////*/
 
-    /// @notice mapping from deposit_id to Deposit
-    mapping(uint256 => Deposit) deposits;
+    /// @notice Emitted when a Charity successfully withdraws their fee percent of earned interest.
+    /// @notice Address withdrawan to is not needed because there is only one charity address for a given CharityVault
+    /// @param underlyingAmount The amount of underlying tokens that were withdrawn.
+    event CharityWithdraw(uint256 underlyingAmount);
 
-    /// @notice mapping from user to their deposits
-    mapping(address => uint256[]) users_deposits;
-
-    /// @notice track latest deposit_id
-    uint256 max_deposit_id;
+    /*///////////////////////////////////////////////////////////////
+                         USER ACTION FUNCTIONS
+    //////////////////////////////////////////////////////////////*/
 
     /// @notice Deposit the vault's underlying token to mint fvTokens.
     /// @param underlyingAmount The amount of the underlying token to deposit.
-    /// @param underlying The underlying ERC20 token the Vault earns yield on.
-    /// @param giftAddress The payable address for the gift interest to be sent to.
-    /// @param giftRate The percent rate for the gift interest.
-    function deposit(
-        uint256 underlyingAmount,
-        ERC20 underlying,
-        address payable giftAddress,
-        uint256 giftRate
-    ) external {
-        // Get the respective Vault
-        Vault vault = factory.getVaultFromUnderlying(underlying);
+    function deposit(uint256 underlyingAmount) external {
+        _mint(msg.sender, (underlyingAmount * 10**decimals) / exchangeRateCurrent());
 
-        // TODO: can this function should take a list of deposits for various vaults/underlying assets,
+        // Transfer in underlying tokens from the sender.
+        underlying.safeTransferFrom(msg.sender, address(this), underlyingAmount);
 
-        max_deposit_id += 1;
-        uint256 deposit_id = max_deposit_id;
-        deposits[deposit_id] = new Deposit(
-            deposit_id,
-            vault,
-            underlyingAmount,
-            giftAddress,
-            giftRate
-        );
-        user_deposits[msg.sender].push(deposit_id);
-
-        // Relay deposit to the respective vault
-        vault.deposit(underlyingAmount);
+        emit Deposit(msg.sender, underlyingAmount);
     }
 
     /// @notice Burns fvTokens and sends underlying tokens to the caller.
     /// @param amount The amount of fvTokens to redeem for underlying tokens.
-    function withdraw(
-        uint256 amount,
-        ERC20 underlying,
-        uint256 deposit_id
-    ) external {
-        // Get the respective Vault
-        Vault vault = factory.getVaultFromUnderlying(underlying);
+    function withdraw(uint256 amount) external {
+        // Query the vault's exchange rate.
+        uint256 exchangeRate = exchangeRateCurrent();
 
-        // TODO: this function should take a list of withdraws for various vaults/underlying assets,
+        // Convert the amount of fvTokens to underlying tokens.
+        // This can be done by multiplying the fvTokens by the exchange rate.
+        uint256 underlyingAmount = (exchangeRate * amount) / 10**decimals;
 
-        // Fetch the Deposit Object from the provided deposit_id
-        Deposit deposit = deposits[deposit_id];
+        // Burn inputed fvTokens.
+        _burn(msg.sender, amount);
 
-        // TODO: determine charity rate withdraw mechanics
+        // If the withdrawal amount is greater than the float, pull tokens from Fuse.
+        if (underlyingAmount > getFloat()) pullIntoFloat(underlyingAmount);
 
-        // Send the gift amount to the charity
-        // TODO: how to send from the vault to the deposit.gift_address
+        // Transfer tokens to the caller.
+        underlying.safeTransfer(msg.sender, underlyingAmount);
 
-        // Withdraw the rest to the user
-        // vault.withdraw();
+        emit Withdraw(msg.sender, underlyingAmount);
     }
 
-    /// @notice Fetches the user's balance for the Vault with the provided underlying asset
-    /// @param user A given EOA.
-    /// @param underlying The underlying ERC20 token the Vault earns yield on.
-    /// @return uint256 The balance of the user for the specified vault
-    function getVaultBalance(address user, ERC20 underlying)
-        external
-        view
-        returns (uint256)
-    {
-        // Get the respective Vault
-        Vault vault = factory.getVaultFromUnderlying(underlying);
+    /// @notice Burns fvTokens and sends underlying tokens to the caller.
+    /// @param underlyingAmount The amount of underlying tokens to withdraw.
+    function withdrawUnderlying(uint256 underlyingAmount) external {
+        // Query the vault's exchange rate.
+        uint256 exchangeRate = exchangeRateCurrent();
 
-        // Return the balanceOf user
-        return vault.balanceOf(user);
+        // Convert underlying tokens to fvTokens and then burn them.
+        // This can be done by multiplying the underlying tokens by the exchange rate.
+        _burn(msg.sender, (exchangeRate * underlyingAmount) / 10**decimals);
+
+        // If the withdrawal amount is greater than the float, pull tokens from Fuse.
+        if (getFloat() < underlyingAmount) pullIntoFloat(underlyingAmount);
+
+        // Transfer underlying tokens to the sender.
+        underlying.safeTransfer(msg.sender, underlyingAmount);
+
+        emit Withdraw(msg.sender, underlyingAmount);
     }
+
+    // TODO: Charity Withdraw function
+
+    receive() external payable {}
 }
