@@ -3,11 +3,9 @@ pragma solidity ^0.8.6;
 
 import "vaults/VaultFactory.sol";
 
-// import {Bytes32AddressLib} from "./libraries/Bytes32AddressLib.sol";
-
-/// @title Fuse Charity Vaults
+/// @title Fuse Charity Vault Factory
 /// @author Transmissions11, JetJadeja, Andreas Bigger
-/// @notice Charity wrapper for vaults/Vault.
+/// @notice Charity wrapper for vaults/VaultFactory.
 contract CharityVaults {
     /// @dev This factory is already deployed
     VaultFactory public factory;
