@@ -11,12 +11,6 @@ import "./CharityVault.sol";
 contract CharityVaultFactory {
     using Bytes32AddressLib for *;
 
-    /// @dev Maps bytes32 hash of underlying erc20 token + charity donation address + fee percent to a CharityVault
-    mapping(bytes32 => address) public cvaults;
-    mapping(bytes32 => bool) public cvaultExists;
-
-
-
     /*///////////////////////////////////////////////////////////////
                                  EVENTS
     //////////////////////////////////////////////////////////////*/
@@ -37,26 +31,22 @@ contract CharityVaultFactory {
     /// @param feePercent percent of earned interest sent to the charity as a donation
     /// @return cvault The newly deployed CharityVault contract.
     function deployCharityVault(ERC20 underlying, address payable charity, uint256 feePercent) external returns (CharityVault cvault) {
-        // Compute a CharityVault Hash
-        // TODO: how to compute the hash of the parameters
-        bytes32 cvaultHash = keccak256(
+        require(getCharityVaultFromUnderlying(underlying, charity, feePercent), "Charity Vault already exists!");
+        
+        // Compute a CharityVault Salt
+        bytes32 cvaultSalt = keccak256(
             abi.encodePacked(
                 address(underlying),
                 charity,
                 feePercent
             )
         );
-
-        require(cvaultExists[cvaultHash], "Charity Vault already exists!");
         
         // Use the create2 opcode to deploy a CharityVault contract.
         // This will revert if a vault with this underlying has already been 
         // deployed, as the salt would be the same and we can't deploy with it twice.
-        cvault = new CharityVault{salt: cvaultHash}(underlying, charity, feePercent);
+        cvault = new CharityVault{salt: cvaultSalt}(underlying, charity, feePercent);
 
-        // Map the parameters to our new CharityVault
-        cvaults[cvaultHash] = address(cvault);
-        cvaultExists[cvaultHash] = true;
         emit CharityVaultDeployed(underlying, cvault);
     }
 
@@ -70,10 +60,9 @@ contract CharityVaultFactory {
     /// @param charity donation address
     /// @param feePercent percent of earned interest sent to the charity as a donation
     /// @return The CharityVault that supports this underlying token.
-    function getCharityVaultFromUnderlying(ERC20 underlying, address payable charity, uint256 feePercent) external view returns (Vault) {
-        // Compute a CharityVault Hash
-        // TODO: how to compute the hash of the parameters
-        bytes32 cvaultHash = keccak256(
+    function getCharityVaultFromUnderlying(ERC20 underlying, address payable charity, uint256 feePercent) external view returns (CharityVault) {
+        // Compute a CharityVault's Salt
+        bytes32 cvaultSalt = keccak256(
             abi.encodePacked(
                 address(underlying),
                 charity,
@@ -81,8 +70,33 @@ contract CharityVaultFactory {
             )
         );
 
-        // Fetch the given CharityVault from the hash of it's parameters
-        return CharityVault(payable(cvaults[cvaultHash]));
+        // Compute the create2 hash.
+        bytes32 create2Hash = keccak256(
+            abi.encodePacked(
+                // Prefix:
+                bytes1(0xFF),
+                // Creator:
+                address(this),
+                // Salt:
+                cvaultSalt,
+                // Bytecode hash:
+                keccak256(
+                    abi.encodePacked(
+                        // Deployment bytecode:
+                        type(CharityVault).creationCode,
+                        // Constructor arguments:
+                        abi.encodePacked(
+                            address(underlying),
+                            charity,
+                            feePercent
+                        )
+                    )
+                )
+            )
+        );
+
+        // Convert the create2 hash into a CharityVault.
+        return CharityVault(payable(create2Hash.toAddress()));
     }
 
     /// @notice Returns if a charity vault at an address has been deployed yet.
