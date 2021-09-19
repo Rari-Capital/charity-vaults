@@ -31,8 +31,6 @@ contract CharityVaultFactory {
     /// @param feePercent percent of earned interest sent to the charity as a donation
     /// @return cvault The newly deployed CharityVault contract.
     function deployCharityVault(ERC20 underlying, address payable charity, uint256 feePercent) external returns (CharityVault cvault) {
-        require(getCharityVaultFromUnderlying(underlying, charity, feePercent), "Charity Vault already exists!");
-        
         // Compute a CharityVault Salt
         bytes32 cvaultSalt = keccak256(
             abi.encodePacked(

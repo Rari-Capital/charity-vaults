@@ -114,6 +114,7 @@ contract CharityVault is Vault {
     }
 
     // TODO: Charity Withdraw function
+    // TODO: this function should only be callable by the charity
 
     receive() external payable {}
 }
