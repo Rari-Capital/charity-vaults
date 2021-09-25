@@ -35,40 +35,12 @@ contract CharityVaultFactoryTest is DSTestPlus {
 
       // Ensure the CharityVault is actually deployed
       assertVaultEq(factory.getCharityVaultFromUnderlying(underlying, payable(fuzzed_addr), feePercent), cvault);
-      assertTrue(factory.isVaultDeployed(cvault));
+      assertTrue(factory.isCharityVaultDeployed(cvault));
       assertERC20Eq(cvault.underlying(), underlying);
     }
 
-    // function test_charity_vault_deposit_functions_properly(uint256 amount) public {
-    //     // Validate fuzzing value
-    //     if (amount > type(uint256).max / 1e36) return;
-
-    //     // Mint underlying tokens to deposit into the vault.
-    //     underlying.mint(self, amount);
-
-    //     // Approve underlying tokens.
-    //     underlying.approve(address(factory), amount);
-
-    //     // Deposit
-    //     factory.deposit(amount, underlying);
-
-    //     // TODO: Check to make sure CharityVaults has a mapping for user deposit -> CharityDeposit { charity_rate, charity(variable enum?), amount }
-    // }
-
-    // function test_vcharity_ault_withdraw_functions_properly(uint256 amount) public {
-    //     // If the number is too large we can't test with it.
-    //     if (amount > (type(uint256).max / 1e37) || amount == 0) return;
-
-    //     // Mint, approve, and deposit tokens into the vault.
-    //     test_charity_vault_deposit_functions_properly(amount);
-
-    //     // Can withdraw full balance from the vault.
-    //     charity_vaults.withdraw(amount, underlying);
-
-    //     // fvTokens are set to 0.
-    //     assertEq(charity_vaults.getVaultBalance(self, underlying), 0);
-    //     assertEq(underlying.balanceOf(self), amount);
-
-    //     // TODO: Check to make sure withdraw deleted the CharityVaults mapping for user deposit -> CharityDeposit { charity_rate, charity(variable enum?), amount }
-    // }
+    function testFail_does_not_allow_duplicate_vaults() public {
+        test_able_to_deploy_charity_vault_from_factory();
+        test_able_to_deploy_charity_vault_from_factory();
+    }
 }
