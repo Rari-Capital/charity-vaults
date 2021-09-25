@@ -20,7 +20,7 @@ contract CharityVaultFactoryTest is DSTestPlus {
     // The CharityVaultFactory should not be able to find a deployed vault for anything initially
     function test_basic_charity_vault_not_deployed(address fuzzed_addr) public {
         assertFalse(
-            factory.isVaultDeployed(CharityVault(payable(fuzzed_addr)))
+            factory.isCharityVaultDeployed(CharityVault(payable(fuzzed_addr)))
         );
     }
 

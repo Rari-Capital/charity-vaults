@@ -29,14 +29,14 @@ contract CharityVault is Vault {
     /// @param _charity The address of the charity
     /// @param _feePercent The percent of earned interest to be routed to the Charity
     constructor(ERC20 _underlying, address payable _charity, uint256 _feePercent)
-        ERC20(
-            // ex: Fuse DAI Charity Vault
-            string(abi.encodePacked("Fuse ", _underlying.name(), " Charity Vault")),
-            // ex: fcvDAI
-            string(abi.encodePacked("fcv", _underlying.symbol())),
-            // ex: 18
-            _underlying.decimals()
-        )
+        // ERC20(
+        //     // ex: Fuse DAI Charity Vault
+        //     string(abi.encodePacked("Fuse ", _underlying.name(), " Charity Vault")),
+        //     // ex: fcvDAI
+        //     string(abi.encodePacked("fcv", _underlying.symbol())),
+        //     // ex: 18
+        //     _underlying.decimals()
+        // )
     {
         // Enforce feePercent
         require(_feePercent >= 0 && _feePercent <= 100, "Fee Percent fails to meet [0, 100] bounds constraint.");
