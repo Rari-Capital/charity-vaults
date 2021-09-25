@@ -21,8 +21,8 @@ contract CharityVault is Vault {
                                 CONSTANTS
     //////////////////////////////////////////////////////////////*/
 
-    address payable immutable charity;
-    uint256 immutable feePercent;
+    address payable public immutable charity;
+    uint256 public immutable feePercent;
 
     /// @notice Creates a new charity vault based on an underlying token.
     /// @param _underlying An underlying ERC20 compliant token.
@@ -61,7 +61,7 @@ contract CharityVault is Vault {
 
     /// @notice Deposit the vault's underlying token to mint fcvTokens.
     /// @param underlyingAmount The amount of the underlying token to deposit.
-    function deposit(uint256 underlyingAmount) external {
+    function deposit(uint256 underlyingAmount) external virtual override {
         _mint(msg.sender, (underlyingAmount * 10**decimals) / exchangeRateCurrent());
 
         // Transfer in underlying tokens from the sender.
@@ -72,7 +72,7 @@ contract CharityVault is Vault {
 
     /// @notice Burns fcvTokens and sends underlying tokens to the caller.
     /// @param amount The amount of fcvTokens to redeem for underlying tokens.
-    function withdraw(uint256 amount) external {
+    function withdraw(uint256 amount) external override {
         // Query the vault's exchange rate.
         uint256 exchangeRate = exchangeRateCurrent();
 
@@ -95,7 +95,7 @@ contract CharityVault is Vault {
 
     /// @notice Burns fcvTokens and sends underlying tokens to the caller.
     /// @param underlyingAmount The amount of underlying tokens to withdraw.
-    function withdrawUnderlying(uint256 underlyingAmount) external {
+    function withdrawUnderlying(uint256 underlyingAmount) external override {
         // Query the vault's exchange rate.
         uint256 exchangeRate = exchangeRateCurrent();
 
