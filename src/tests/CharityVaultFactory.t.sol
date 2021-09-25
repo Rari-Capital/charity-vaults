@@ -19,8 +19,8 @@ contract CharityVaultFactoryTest is DSTestPlus {
 
     // The CharityVaultFactory should not be able to find a deployed vault for anything initially
     function test_basic_charity_vault_not_deployed(address fuzzed_addr) public {
-        assertTrue(
-            !factory.isVaultDeployed(CharityVault(payable(fuzzed_addr)))
+        assertFalse(
+            factory.isVaultDeployed(CharityVault(payable(fuzzed_addr)))
         );
     }
 
@@ -39,8 +39,18 @@ contract CharityVaultFactoryTest is DSTestPlus {
       assertERC20Eq(cvault.underlying(), underlying);
     }
 
-    function testFail_does_not_allow_duplicate_vaults() public {
-        test_able_to_deploy_charity_vault_from_factory();
-        test_able_to_deploy_charity_vault_from_factory();
+    /// @notice we need to make sure we can't deploy charity vaults with fee percents outside our constraints
+    function testFail_deploy_charity_vault_with_high_fee_percent(address fuzzed_addr, uint256 feePercent) public {
+      // Validate fuzzed fee percent
+      if (feePercent > type(uint256).max / 1e36) return;
+      if(feePercent <= 100 || feePercent >= 0) return;
+
+      // This deploy should fail since the fee percent is out of bounds
+      test_able_to_deploy_charity_vault_from_factory(fuzzed_addr, feePercent);
+    }
+
+    function testFail_does_not_allow_duplicate_vaults(address fuzzed_addr, uint256 feePercent) public {
+        test_able_to_deploy_charity_vault_from_factory(fuzzed_addr, feePercent);
+        test_able_to_deploy_charity_vault_from_factory(fuzzed_addr, feePercent);
     }
 }

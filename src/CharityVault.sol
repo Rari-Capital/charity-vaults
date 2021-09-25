@@ -17,16 +17,11 @@ import "./tests/utils/DSTestPlus.sol";
 contract CharityVault is Vault {
     using SafeERC20 for ERC20;
 
-
-    // ?? Either the CharityVault is a Vault ??
-    // ?? Or, it deploys/finds an existing Vault and wraps it managing the fvTokens <> fcvTokens ??
-
-
     /*///////////////////////////////////////////////////////////////
                                 CONSTANTS
     //////////////////////////////////////////////////////////////*/
 
-    address immutable payable charity;
+    address payable immutable charity;
     uint256 immutable feePercent;
 
     /// @notice Creates a new charity vault based on an underlying token.
@@ -35,14 +30,17 @@ contract CharityVault is Vault {
     /// @param _feePercent The percent of earned interest to be routed to the Charity
     constructor(ERC20 _underlying, address payable _charity, uint256 _feePercent)
         ERC20(
-            // ex: Fuse DAI Vault
-            string(abi.encodePacked("Fuse Charity ", _underlying.name(), " Vault")),
-            // ex: fvDAI
+            // ex: Fuse DAI Charity Vault
+            string(abi.encodePacked("Fuse ", _underlying.name(), " Charity Vault")),
+            // ex: fcvDAI
             string(abi.encodePacked("fcv", _underlying.symbol())),
             // ex: 18
             _underlying.decimals()
         )
     {
+        // Enforce feePercent
+        require(_feePercent >= 0 && _feePercent <= 100, "Fee Percent fails to meet [0, 100] bounds constraint.");
+
         underlying = _underlying;
         charity = _charity;
         feePercent = _feePercent;
@@ -61,7 +59,7 @@ contract CharityVault is Vault {
                          USER ACTION FUNCTIONS
     //////////////////////////////////////////////////////////////*/
 
-    /// @notice Deposit the vault's underlying token to mint fvTokens.
+    /// @notice Deposit the vault's underlying token to mint fcvTokens.
     /// @param underlyingAmount The amount of the underlying token to deposit.
     function deposit(uint256 underlyingAmount) external {
         _mint(msg.sender, (underlyingAmount * 10**decimals) / exchangeRateCurrent());
@@ -72,41 +70,43 @@ contract CharityVault is Vault {
         emit Deposit(msg.sender, underlyingAmount);
     }
 
-    /// @notice Burns fvTokens and sends underlying tokens to the caller.
-    /// @param amount The amount of fvTokens to redeem for underlying tokens.
+    /// @notice Burns fcvTokens and sends underlying tokens to the caller.
+    /// @param amount The amount of fcvTokens to redeem for underlying tokens.
     function withdraw(uint256 amount) external {
         // Query the vault's exchange rate.
         uint256 exchangeRate = exchangeRateCurrent();
 
-        // Convert the amount of fvTokens to underlying tokens.
-        // This can be done by multiplying the fvTokens by the exchange rate.
+        // Convert the amount of fcvTokens to underlying tokens.
+        // This can be done by multiplying the fcvTokens by the exchange rate.
         uint256 underlyingAmount = (exchangeRate * amount) / 10**decimals;
 
-        // Burn inputed fvTokens.
+        // Burn inputed fcvTokens.
         _burn(msg.sender, amount);
 
         // If the withdrawal amount is greater than the float, pull tokens from Fuse.
         if (underlyingAmount > getFloat()) pullIntoFloat(underlyingAmount);
 
+        // TODO: this needs to be updated to include charity withdraw
         // Transfer tokens to the caller.
         underlying.safeTransfer(msg.sender, underlyingAmount);
 
         emit Withdraw(msg.sender, underlyingAmount);
     }
 
-    /// @notice Burns fvTokens and sends underlying tokens to the caller.
+    /// @notice Burns fcvTokens and sends underlying tokens to the caller.
     /// @param underlyingAmount The amount of underlying tokens to withdraw.
     function withdrawUnderlying(uint256 underlyingAmount) external {
         // Query the vault's exchange rate.
         uint256 exchangeRate = exchangeRateCurrent();
 
-        // Convert underlying tokens to fvTokens and then burn them.
+        // Convert underlying tokens to fcvTokens and then burn them.
         // This can be done by multiplying the underlying tokens by the exchange rate.
         _burn(msg.sender, (exchangeRate * underlyingAmount) / 10**decimals);
 
         // If the withdrawal amount is greater than the float, pull tokens from Fuse.
         if (getFloat() < underlyingAmount) pullIntoFloat(underlyingAmount);
 
+        // TODO: this needs to be updated to calculate how much use should get
         // Transfer underlying tokens to the sender.
         underlying.safeTransfer(msg.sender, underlyingAmount);
 
