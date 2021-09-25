@@ -26,8 +26,8 @@ contract CharityVault is Vault {
                                 CONSTANTS
     //////////////////////////////////////////////////////////////*/
 
-    address payable charity;
-    uint256 feePercent;
+    address immutable payable charity;
+    uint256 immutable feePercent;
 
     /// @notice Creates a new charity vault based on an underlying token.
     /// @param _underlying An underlying ERC20 compliant token.

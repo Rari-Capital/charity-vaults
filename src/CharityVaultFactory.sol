@@ -31,19 +31,19 @@ contract CharityVaultFactory {
     /// @param feePercent percent of earned interest sent to the charity as a donation
     /// @return cvault The newly deployed CharityVault contract.
     function deployCharityVault(ERC20 underlying, address payable charity, uint256 feePercent) external returns (CharityVault cvault) {
-        // Compute a CharityVault Salt
-        bytes32 cvaultSalt = keccak256(
-            abi.encodePacked(
-                address(underlying),
-                charity,
-                feePercent
-            )
-        );
-        
         // Use the create2 opcode to deploy a CharityVault contract.
         // This will revert if a vault with this underlying has already been 
         // deployed, as the salt would be the same and we can't deploy with it twice.
-        cvault = new CharityVault{salt: cvaultSalt}(underlying, charity, feePercent);
+        cvault = new CharityVault{
+            // Compute Inline CharityVault Salt, h/t @t11s
+            salt: keccak256(
+                abi.encodePacked(
+                    address(underlying),
+                    charity,
+                    feePercent
+                )
+            )
+        }(underlying, charity, feePercent);
 
         emit CharityVaultDeployed(underlying, cvault);
     }
@@ -59,24 +59,21 @@ contract CharityVaultFactory {
     /// @param feePercent percent of earned interest sent to the charity as a donation
     /// @return The CharityVault that supports this underlying token.
     function getCharityVaultFromUnderlying(ERC20 underlying, address payable charity, uint256 feePercent) external view returns (CharityVault) {
-        // Compute a CharityVault's Salt
-        bytes32 cvaultSalt = keccak256(
-            abi.encodePacked(
-                address(underlying),
-                charity,
-                feePercent
-            )
-        );
-
-        // Compute the create2 hash.
-        bytes32 create2Hash = keccak256(
+        // Convert the create2 hash into a CharityVault.
+        return CharityVault(payable(keccak256(
             abi.encodePacked(
                 // Prefix:
                 bytes1(0xFF),
                 // Creator:
                 address(this),
-                // Salt:
-                cvaultSalt,
+                // Compute Inline CharityVault Salt, h/t @t11s
+                keccak256(
+                    abi.encodePacked(
+                        address(underlying),
+                        charity,
+                        feePercent
+                    )
+                ),
                 // Bytecode hash:
                 keccak256(
                     abi.encodePacked(
@@ -91,10 +88,7 @@ contract CharityVaultFactory {
                     )
                 )
             )
-        );
-
-        // Convert the create2 hash into a CharityVault.
-        return CharityVault(payable(create2Hash.toAddress()));
+        ).toAddress()));
     }
 
     /// @notice Returns if a charity vault at an address has been deployed yet.
