@@ -3,7 +3,7 @@ pragma solidity ^0.8.6;
 
 import {ERC20} from "solmate/erc20/ERC20.sol";
 import {Bytes32AddressLib} from "vaults/libraries/Bytes32AddressLib.sol";
-import "./CharityVault.sol";
+import {CharityVault} from "./CharityVault.sol";
 
 /// @title Fuse Charity Vault Factory
 /// @author Transmissions11, JetJadeja, Andreas Bigger
