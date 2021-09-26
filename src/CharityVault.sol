@@ -4,6 +4,7 @@ pragma solidity 0.8.6;
 import {ERC20} from "solmate/erc20/ERC20.sol";
 import {Auth} from "solmate/auth/Auth.sol";
 import {SafeERC20} from "solmate/erc20/SafeERC20.sol";
+import {Vault} from "vaults/Vault.sol";
 
 /// @title Fuse Charity Vault (fcvToken)
 /// @author Transmissions11, JetJadeja, Andreas Bigger, Nicolas Neven, Adam Egyed
@@ -71,7 +72,7 @@ contract CharityVault is ERC20, Auth {
     /// @notice Emitted when a Charity successfully withdraws their fee percent of earned interest.
     /// @notice Address withdrawan to is not needed because there is only one charity address for a given CharityVault
     /// @param underlyingAmount The amount of underlying tokens that were withdrawn.
-    event CharityWithdraw(uint256 underlyingAmount);
+    event DonationWithdraw(uint256 underlyingAmount);
 
     /*///////////////////////////////////////////////////////////////
                          USER ACTION FUNCTIONS
@@ -79,18 +80,18 @@ contract CharityVault is ERC20, Auth {
 
     /// @notice Deposit the vault's underlying token to mint fcvTokens.
     /// @param underlyingAmount The amount of the underlying token to deposit.
-    function deposit(uint256 underlyingAmount) external virtual override {
+    function deposit(uint256 underlyingAmount) external {
         _mint(msg.sender, (underlyingAmount * 10**decimals) / exchangeRateCurrent());
 
-        // Transfer in underlying tokens from the sender.
-        underlying.safeTransferFrom(msg.sender, address(this), underlyingAmount);
+        // Transfer in underlying tokens from the sender to the vault
+        underlying.safeTransferFrom(msg.sender, address(vault), underlyingAmount);
 
-        emit Deposit(msg.sender, underlyingAmount);
+        emit CharityDeposit(msg.sender, underlyingAmount);
     }
 
     /// @notice Burns fcvTokens and sends underlying tokens to the caller.
     /// @param amount The amount of fcvTokens to redeem for underlying tokens.
-    function withdraw(uint256 amount) external override {
+    function withdraw(uint256 amount) external {
         // Query the vault's exchange rate.
         uint256 exchangeRate = exchangeRateCurrent();
 
@@ -102,18 +103,18 @@ contract CharityVault is ERC20, Auth {
         _burn(msg.sender, amount);
 
         // If the withdrawal amount is greater than the float, pull tokens from Fuse.
-        if (underlyingAmount > getFloat()) pullIntoFloat(underlyingAmount);
+        // if (underlyingAmount > getFloat()) vault.pullIntoFloat(underlyingAmount);
 
         // TODO: this needs to be updated to include charity withdraw
         // Transfer tokens to the caller.
         underlying.safeTransfer(msg.sender, underlyingAmount);
 
-        emit Withdraw(msg.sender, underlyingAmount);
+        emit CharityWithdraw(msg.sender, underlyingAmount);
     }
 
     /// @notice Burns fcvTokens and sends underlying tokens to the caller.
     /// @param underlyingAmount The amount of underlying tokens to withdraw.
-    function withdrawUnderlying(uint256 underlyingAmount) external override {
+    function withdrawUnderlying(uint256 underlyingAmount) external {
         // Query the vault's exchange rate.
         uint256 exchangeRate = exchangeRateCurrent();
 
@@ -122,17 +123,43 @@ contract CharityVault is ERC20, Auth {
         _burn(msg.sender, (exchangeRate * underlyingAmount) / 10**decimals);
 
         // If the withdrawal amount is greater than the float, pull tokens from Fuse.
-        if (getFloat() < underlyingAmount) pullIntoFloat(underlyingAmount);
+        // TODO: how to pull in float?
+        // if (getFloat() < underlyingAmount) vault.pullIntoFloat(underlyingAmount);
 
         // TODO: this needs to be updated to calculate how much use should get
         // Transfer underlying tokens to the sender.
         underlying.safeTransfer(msg.sender, underlyingAmount);
 
-        emit Withdraw(msg.sender, underlyingAmount);
+        emit CharityWithdraw(msg.sender, underlyingAmount);
     }
 
     // TODO: Charity Withdraw function
     // TODO: this function should only be callable by the charity
+
+    /// @notice Burns fcvTokens and sends underlying tokens to the charity.
+    /// @param amount The amount of fcvTokens to redeem for underlying tokens.
+    function charityWithdraw(uint256 amount) external {
+        // Query the vault's exchange rate.
+        uint256 exchangeRate = exchangeRateCurrent();
+
+        // TODO: we have to somehow keep track of how much is owed to the charity vs the user
+        // Convert the amount of fcvTokens to underlying tokens.
+        // This can be done by multiplying the fcvTokens by the exchange rate.
+        uint256 underlyingAmount = ((exchangeRate * amount) / 10**decimals) * (feePercent / 100.0);
+
+        // Burn inputed fcvTokens.
+        _burn(charity, amount);
+
+        // If the withdrawal amount is greater than the float, pull tokens from Fuse.
+        // if (underlyingAmount > getFloat()) vault.pullIntoFloat(underlyingAmount);
+
+        // TODO: this needs to be updated to include charity withdraw
+        // Transfer tokens to the charity.
+        underlying.safeTransfer(charity, underlyingAmount);
+
+        emit DonationWithdraw(underlyingAmount);
+    }
+
 
     /*///////////////////////////////////////////////////////////////
                          SHARE PRICE FUNCTIONS

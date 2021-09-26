@@ -34,7 +34,7 @@ contract CharityVaultFactoryTest is DSTestPlus {
       CharityVault cvault = factory.deployCharityVault(underlying, payable(fuzzed_addr), feePercent);
 
       // Ensure the CharityVault is actually deployed
-      assertVaultEq(factory.getCharityVaultFromUnderlying(underlying, payable(fuzzed_addr), feePercent), cvault);
+      assertCharityVaultEq(factory.getCharityVaultFromUnderlying(underlying, payable(fuzzed_addr), feePercent), cvault);
       assertTrue(factory.isCharityVaultDeployed(cvault));
       assertERC20Eq(cvault.underlying(), underlying);
     }
