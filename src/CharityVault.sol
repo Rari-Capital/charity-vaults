@@ -5,8 +5,6 @@ import {ERC20} from "solmate/erc20/ERC20.sol";
 import {Auth} from "solmate/auth/Auth.sol";
 import {SafeERC20} from "solmate/erc20/SafeERC20.sol";
 
-import "./tests/utils/DSTestPlus.sol";
-
 /// @title Fuse Charity Vault (fcvToken)
 /// @author Transmissions11, JetJadeja, Andreas Bigger, Nicolas Neven, Adam Egyed
 /// @notice Yield bearing token that enables users to swap
