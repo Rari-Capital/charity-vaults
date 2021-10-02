@@ -5,8 +5,10 @@ import {MockERC20} from "solmate/tests/utils/MockERC20.sol";
 
 import {DSTestPlus} from "./utils/DSTestPlus.sol";
 import {CharityVault} from "../CharityVault.sol";
+import {Vault} from 'vaults/Vault.sol';
 
 contract CharityVaultTest is DSTestPlus {
+    Vault vault;
     CharityVault cvault;
     MockERC20 underlying;
     address payable immutable caddress = payable(address(0));
@@ -14,11 +16,13 @@ contract CharityVaultTest is DSTestPlus {
 
     function setUp() public {
         underlying = new MockERC20("Mock Token", "TKN", 18);
-        cvault = new CharityVault(underlying, caddress, cfeePercent);
+        vault = new Vault(underlying);
+        vault.setFeeClaimer(address(1));
+        cvault = new CharityVault(underlying, caddress, cfeePercent, vault);
     }
 
     function test_deploy_charity_vault(address payable _address, uint256 _feePercent) public {
-        CharityVault newVault = new CharityVault(underlying, _address, _feePercent);
+        CharityVault newVault = new CharityVault(underlying, _address, _feePercent, vault);
         
         // Assert our CharityVault parameters are equal
         assertTrue(address(newVault).code.length > 0);

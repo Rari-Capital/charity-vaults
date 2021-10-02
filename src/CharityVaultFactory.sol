@@ -51,7 +51,8 @@ contract CharityVaultFactory {
                 abi.encodePacked(
                     address(underlying),
                     charity,
-                    feePercent
+                    feePercent,
+                    address(vaultFactory.getVaultFromUnderlying(underlying))
                 )
             )
         }(underlying, charity, feePercent, vaultFactory.getVaultFromUnderlying(underlying));
@@ -82,7 +83,8 @@ contract CharityVaultFactory {
                     abi.encodePacked(
                         address(underlying),
                         charity,
-                        feePercent
+                        feePercent,
+                        address(vaultFactory.getVaultFromUnderlying(underlying))
                     )
                 ),
                 // Bytecode hash:
@@ -92,9 +94,10 @@ contract CharityVaultFactory {
                         type(CharityVault).creationCode,
                         // Constructor arguments:
                         abi.encodePacked(
-                            address(underlying),
+                            underlying,
                             charity,
-                            feePercent
+                            feePercent,
+                            vaultFactory.getVaultFromUnderlying(underlying)
                         )
                     )
                 )
