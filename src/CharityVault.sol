@@ -35,7 +35,7 @@ contract CharityVault is ERC20, Auth {
     /// @param _underlying An underlying ERC20 compliant token.
     /// @param _charity The address of the charity
     /// @param _feePercent The percent of earned interest to be routed to the Charity
-    constructor(ERC20 _underlying, address payable _charity, uint256 _feePercent)
+    constructor(ERC20 _underlying, address payable _charity, uint256 _feePercent, Vault v)
         ERC20(
             // ex: Fuse DAI Charity Vault
             string(abi.encodePacked("Fuse ", _underlying.name(), " Charity Vault")),
@@ -52,7 +52,10 @@ contract CharityVault is ERC20, Auth {
         underlying = _underlying;
         charity = _charity;
         feePercent = _feePercent;
-        vault = new Vault(_underlying);
+        vault = v;
+        // ?? We shouldn't ever create a new vault here right ??
+        // ?? Vaults should already exist ??
+        // vault = new Vault(_underlying);
     }
 
     /*///////////////////////////////////////////////////////////////

@@ -4,7 +4,7 @@ pragma solidity ^0.8.6;
 import {MockERC20} from "solmate/tests/utils/MockERC20.sol";
 
 import {DSTestPlus} from "./utils/DSTestPlus.sol";
-import "../CharityVault.sol";
+import {CharityVault} from "../CharityVault.sol";
 
 contract CharityVaultTest is DSTestPlus {
     CharityVault cvault;
