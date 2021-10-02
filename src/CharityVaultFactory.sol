@@ -4,12 +4,23 @@ pragma solidity ^0.8.6;
 import {ERC20} from "solmate/erc20/ERC20.sol";
 import {Bytes32AddressLib} from "vaults/libraries/Bytes32AddressLib.sol";
 import {CharityVault} from "./CharityVault.sol";
+import {VaultFactory} from "vaults/VaultFactory.sol";
 
 /// @title Fuse Charity Vault Factory
 /// @author Transmissions11, JetJadeja, Andreas Bigger
 /// @notice Charity wrapper for vaults/VaultFactory.
 contract CharityVaultFactory {
     using Bytes32AddressLib for *;
+
+    /// @dev we need to store a vaultFactory to fetch existing Vaults
+    VaultFactory private vaultFactory;
+
+    /// @notice Creates a new CharityVaultFactory
+    /// @param _address the address of the VaultFactory
+    constructor(address _address)
+    {
+        vaultFactory = VaultFactory(_address);
+    }
 
     /*///////////////////////////////////////////////////////////////
                                  EVENTS
@@ -43,7 +54,7 @@ contract CharityVaultFactory {
                     feePercent
                 )
             )
-        }(underlying, charity, feePercent);
+        }(underlying, charity, feePercent, vaultFactory.getVaultFromUnderlying(underlying));
 
         emit CharityVaultDeployed(underlying, cvault);
     }
