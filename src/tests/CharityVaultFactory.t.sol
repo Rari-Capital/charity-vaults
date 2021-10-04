@@ -14,6 +14,9 @@ contract CharityVaultFactoryTest is DSTestPlus {
     VaultFactory vaultFactory;
     MockERC20 underlying;
 
+    /// @dev For _random_ feePercent generation
+    uint256 nonce = 1;
+
     function setUp() public {
         underlying = new MockERC20("Mock Token", "TKN", 18);
         vaultFactory = new VaultFactory();
@@ -30,7 +33,7 @@ contract CharityVaultFactoryTest is DSTestPlus {
     }
 
     /// @dev Helper function to refactor deploying a cvault from the cvault factory
-    function deploy_cvault(MockERC20 _underlying, address _address, uint256 _feePercent) public {
+    function deploy_cvault(MockERC20 _underlying, address payable _address, uint256 _feePercent) public {
         // Validate fuzzed fee percent
         if (_feePercent > type(uint256).max / 1e36) return;
 
@@ -43,54 +46,49 @@ contract CharityVaultFactoryTest is DSTestPlus {
         //   assertCharityVaultEq(factory.getCharityVaultFromUnderlying(_underlying, payable(_address), _feePercent), cvault);
     }
 
-    /// @dev Helper function refactoring deploying a cvault using just the charity address
-    function deploy_cvault_from_address(address payable c_address) public {
-        for (uint256 i = 0; i <= 100; i++) {
-            // ** We can escape if the same fuzzed address is passed into the test
-            if(factory.isCharityVaultDeployed(factory.getCharityVaultFromUnderlying(underlying, c_address, i))) return;
-            deploy_cvault(underlying, c_address, i);
-        }
-    }
-
 
     /// @dev The CharityVaultFactory should not be able to find a deployed vault for nonexistant Vaults
-    function test_basic_charity_vault_not_deployed(address fuzzed_addr) public {
+    function test_basic_charity_vault_not_deployed(address payable fuzzed_addr) public {
         assertFalse(
             factory.isCharityVaultDeployed(CharityVault(payable(fuzzed_addr)))
         );
     }
 
     /// @notice we can deploy a CharityVault
-    /// @dev uses the same testing pattern as VaultFactory for consistency
-    function test_able_to_deploy_cvault_from_factory(address fuzzed_addr, uint256 feePercent) public {
-      // TODO: REMOVE
-      // !! THIS WILL JUST PASS THE TEST MOST OF THE TIME !!
-      if(feePercent > 100 || feePercent < 0) return;
-      deploy_vault(underlying);
-      deploy_cvault(underlying, fuzzed_addr, feePercent);
-    }
-
-    // TODO: REMOVE ONCE THE ABOVE FUNCTION IS FIXED
-    /// @notice we can deploy a CharityVault
-    /// @dev uses the same testing pattern as VaultFactory for consistency
-    function test_able_to_deploy_cvault_from_factory_temp(address payable fuzzed_addr) public {
-        if(vaultFactory.isVaultDeployed(vaultFactory.getVaultFromUnderlying(underlying))) return;
-        deploy_vault(underlying);
-        deploy_cvault_from_address(fuzzed_addr);
+    /// @dev Checks for previously deployed vaults
+    /// @dev Validates fee percent params, and coalesces using semi-random hashes
+    function test_able_to_deploy_cvault_from_factory(address payable fuzzed_addr, uint256 feePercent) public {
+        if(!vaultFactory.isVaultDeployed(vaultFactory.getVaultFromUnderlying(underlying))) {
+            deploy_vault(underlying);
+        }
+        
+        uint256 validatedFeePercent = feePercent;
+        if(feePercent > 100 || feePercent < 0) {
+            validatedFeePercent = uint256(keccak256(abi.encodePacked(block.timestamp, msg.sender, nonce))) % 100;
+            nonce++;
+        }
+        deploy_cvault(underlying, fuzzed_addr, validatedFeePercent);
     }
 
     /// @notice we need to make sure we can't deploy charity vaults with fee percents outside our constraints
-    function testFail_deploy_cvault_with_high_fee_percent(address fuzzed_addr, uint256 feePercent) public {
-      // Filter out valid fuzzed feePercents
-      assertFalse(feePercent > type(uint256).max / 1e36);
-      assertFalse(feePercent <= 100 || feePercent >= 0);
+    function testFail_deploy_cvault_with_high_fee_percent(address payable fuzzed_addr, uint256 feePercent) public {
+        // Filter out valid fuzzed feePercents
+        uint256 validatedFeePercent = feePercent;
+        if(feePercent <= 100 || feePercent >= 0) {
+            validatedFeePercent = uint256(keccak256(abi.encodePacked(block.timestamp, msg.sender, nonce))) + 101;
+            nonce++;
+        }
+        assertFalse(validatedFeePercent > type(uint256).max / 1e36);
 
-      // This deploy should fail since the fee percent is out of bounds
-      test_able_to_deploy_cvault_from_factory(fuzzed_addr, feePercent);
+        if(!vaultFactory.isVaultDeployed(vaultFactory.getVaultFromUnderlying(underlying))) {
+            deploy_vault(underlying);
+        }
+        // This deploy should fail since the fee percent is out of bounds
+        deploy_cvault(underlying, fuzzed_addr, validatedFeePercent);
     }
 
     /// @notice deploying similar CharityVaults should only fail when underlying, fuzzed_addr, and feePercent are the same
-    function testFail_does_not_allow_duplicate_cvaults(address fuzzed_addr, uint256 feePercent) public {
+    function testFail_does_not_allow_duplicate_cvaults(address payable fuzzed_addr, uint256 feePercent) public {
         deploy_vault(underlying);
         // ** We need to assertFalse for high fee percent so test doesn't pass (return) in the deploy_cvault function
         assertFalse(feePercent > type(uint256).max / 1e36);
@@ -99,12 +97,20 @@ contract CharityVaultFactoryTest is DSTestPlus {
     }
 
     /// @notice Makes sure we can deploy same charity address and feePercents for different underlying tokens
-    function test_can_deploy_different_underlying_cvaults(address fuzzed_addr, uint256 feePercent) public {
-        deploy_vault(underlying);
-        deploy_cvault(underlying, fuzzed_addr, feePercent);
+    function test_can_deploy_different_underlying_cvaults(address payable fuzzed_addr, uint256 feePercent) public {
+        if(!vaultFactory.isVaultDeployed(vaultFactory.getVaultFromUnderlying(underlying))) {
+            deploy_vault(underlying);
+        }
+        
+        uint256 validatedFeePercent = feePercent;
+        if(feePercent > 100 || feePercent < 0) {
+            validatedFeePercent = uint256(keccak256(abi.encodePacked(block.timestamp, msg.sender, nonce))) % 100;
+            nonce++;
+        }
+        deploy_cvault(underlying, fuzzed_addr, validatedFeePercent);
         
         // Try to deploy the same charity address and feePercent for different underlyings
         MockERC20 underlying2 = new MockERC20("Mock Token 2", "TKN2", 18);
-        deploy_cvault(underlying2, fuzzed_addr, feePercent);
+        deploy_cvault(underlying2, fuzzed_addr, validatedFeePercent);
     }
 }

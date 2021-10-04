@@ -13,6 +13,7 @@ contract CharityVaultTest is DSTestPlus {
     MockERC20 underlying;
     address payable immutable caddress = payable(address(0));
     uint256 immutable cfeePercent = 10;
+    uint256 nonce = 1;
 
     function setUp() public {
         underlying = new MockERC20("Mock Token", "TKN", 18);
@@ -21,47 +22,40 @@ contract CharityVaultTest is DSTestPlus {
         cvault = new CharityVault(underlying, caddress, cfeePercent, vault);
     }
 
+    /// @notice Tests to make sure the deployed ERC20 metadata is correct
+    function test_properly_init_erc20() public {
+        assertERC20Eq(cvault.underlying(), underlying);
+        assertEq(cvault.name(), string(abi.encodePacked("Fuse ", underlying.name(), " Charity Vault")));
+        assertEq(cvault.symbol(), string(abi.encodePacked("fcv", underlying.symbol())));
+    }
+
     /// @notice Tests if we can deploy a charity vault with valid fuzzed parameters
     function test_deploy_charity_vault(address payable _address, uint256 _feePercent) public {
-        // ** We can ignore out of range fee percents
-        if(_feePercent > 100 || _feePercent < 0) return;
+        uint256 validatedFeePercent = _feePercent;
+        if(_feePercent > 100 || _feePercent < 0) {
+            validatedFeePercent = uint256(keccak256(abi.encodePacked(block.timestamp, msg.sender, nonce))) % 100;
+            nonce++;
+        }
 
-        CharityVault newVault = new CharityVault(underlying, _address, _feePercent, vault);
+        CharityVault newVault = new CharityVault(underlying, _address, validatedFeePercent, vault);
         
         // Assert our CharityVault parameters are equal
         assertTrue(address(newVault).code.length > 0);
-        // assertEq(caddress, newVault.charity());
-        // assertEq(cfeePercent, newVault.feePercent());
-        // assertERC20Eq(newVault.underlying(), underlying);
+        assertEq(_address, newVault.charity());
+        assertEq(validatedFeePercent, newVault.feePercent());
+        assertERC20Eq(newVault.underlying(), underlying);
     }
 
     /// @notice Tests if deployment fails for invalid parameters
     function testFail_deploy_charity_vault(address payable _address, uint256 _feePercent) public {
-        // ** We should fail for valid feePercents - only testing invalid params
-        assertFalse(_feePercent <= 100 || _feePercent >= 0);
+        uint256 validatedFeePercent = _feePercent;
+        if(_feePercent <= 100 || _feePercent >= 0) {
+            validatedFeePercent = uint256(keccak256(abi.encodePacked(block.timestamp, msg.sender, nonce))) + 101;
+            nonce++;
+        }
 
-        CharityVault _newVault = new CharityVault(underlying, _address, _feePercent, vault);
+        CharityVault _newVault = new CharityVault(underlying, _address, validatedFeePercent, vault);
     }
-
-    /// @notice we shouldn't be able to deploy multiple charity vaults with the same configuration
-    // function testFail_deploy_equal_config_cvaults() public {
-    //     test_deploy_charity_vault(caddress, cfeePercent);
-    //     test_deploy_charity_vault(caddress, cfeePercent);
-    // }
-
-    // /// @notice we should, however, be able to deploy charity vaults with slightly varying parameters
-    // function test_deploys_vaults_varying_params() public {
-    //     test_deploy_charity_vault(payable(address(0)), 5);
-    //     test_deploy_charity_vault(payable(address(1)), 5);
-    //     test_deploy_charity_vault(payable(address(0)), cfeePercent);
-    //     test_deploy_charity_vault(payable(address(1)), cfeePercent);
-    // }
-
-    // function test_basic_charity_vault_not_deployed() public {
-    //     assertTrue(
-    //         !cvault.factory().isVaultDeployed(Vault(payable(address(0))))
-    //     );
-    // }
 
     // function test_charity_vault_deposit_functions_properly(uint256 amount) public {
     //     // Validate fuzzing value
