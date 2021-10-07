@@ -4,6 +4,7 @@ pragma solidity 0.8.6;
 import {ERC20} from "solmate/erc20/ERC20.sol";
 import {Auth} from "solmate/auth/Auth.sol";
 import {SafeERC20} from "solmate/erc20/SafeERC20.sol";
+import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 import {Vault} from "vaults/Vault.sol";
 
 /// @title Fuse Charity Vault (fcvToken)
@@ -13,6 +14,7 @@ import {Vault} from "vaults/Vault.sol";
 /// where a percent of the earned interest is sent to charity.
 contract CharityVault is ERC20, Auth {
     using SafeERC20 for ERC20;
+    using FixedPointMathLib for uint256;
 
     /*///////////////////////////////////////////////////////////////
                                 CONSTANTS
@@ -20,22 +22,25 @@ contract CharityVault is ERC20, Auth {
 
     /// @dev we need to compose a Vault here because the Vault functions are external
     /// @dev which are not able to be overridden since that requires public virtual specifiers
-    Vault private vault;
+    Vault private immutable VAULT;
 
     /// @notice The underlying token for the vault.
-    ERC20 public immutable underlying;
+    /// @dev immutable instead of constant so we can set UNDERLYING in the constructor
+    ERC20 public immutable UNDERLYING;
 
     /// @notice the charity's payable donation address
-    address payable public immutable charity;
+    /// @dev immutable instead of constant so we can set CHARITY in the constructor
+    address payable public immutable CHARITY;
 
     /// @notice the percent of the earned interest that should be redirected to the charity
-    uint256 public immutable feePercent;
+    uint256 public immutable FEE_PERCENT;
 
     /// @notice Creates a new charity vault based on an underlying token.
-    /// @param _underlying An underlying ERC20 compliant token.
-    /// @param _charity The address of the charity
-    /// @param _feePercent The percent of earned interest to be routed to the Charity
-    constructor(ERC20 _underlying, address payable _charity, uint256 _feePercent, Vault v)
+    /// @param _UNDERLYING An underlying ERC20 compliant token.
+    /// @param _CHARITY The address of the charity
+    /// @param _FEE_PERCENT The percent of earned interest to be routed to the Charity
+    /// @param _VAULT The existing/deployed Vault for the respective underlying token
+    constructor(ERC20 _UNDERLYING, address payable _CHARITY, uint256 _FEE_PERCENT, Vault _VAULT)
         ERC20(
             // ex: Rari DAI Charity Vault
             string(abi.encodePacked("Rari ", _underlying.name(), " Charity Vault")),
@@ -44,18 +49,25 @@ contract CharityVault is ERC20, Auth {
             // ex: 18
             _underlying.decimals()
         )
+        Auth(
+            // Set the CharityVault's owner to the CharityVaultFactory's owner:
+            CharityVaultFactory(msg.sender).owner()
+        )
     {
         // Enforce feePercent
-        require(_feePercent >= 0 && _feePercent <= 100, "Fee Percent fails to meet [0, 100] bounds constraint.");
+        require(_FEE_PERCENT >= 0 && _FEE_PERCENT <= 100, "Fee Percent fails to meet [0, 100] bounds constraint.");
 
-        // Define our constants
-        underlying = _underlying;
-        charity = _charity;
-        feePercent = _feePercent;
-        vault = v;
+        // Define our immutables
+        UNDERLYING = _underlying;
+        CHARITY = _CHARITY;
+        FEE_PERCENT = _FEE_PERCENT;
+        VAULT = _VAULT;
+
         // ?? We shouldn't ever create a new vault here right ??
         // ?? Vaults should already exist ??
         // vault = new Vault(_underlying);
+
+        // TODO: Do we need a BASE_UNIT... prolly
     }
 
     /*///////////////////////////////////////////////////////////////
@@ -65,17 +77,17 @@ contract CharityVault is ERC20, Auth {
     /// @notice Emitted after a successful deposit.
     /// @param user The address of the account that deposited into the vault.
     /// @param underlyingAmount The amount of underlying tokens that were deposited.
-    event CharityDeposit(address user, uint256 underlyingAmount);
+    event CharityDeposit(address indexed user, uint256 underlyingAmount);
 
     /// @notice Emitted after a successful withdrawal.
     /// @param user The address of the account that withdrew from the vault.
     /// @param underlyingAmount The amount of underlying tokens that were withdrawn.
-    event CharityWithdraw(address user, uint256 underlyingAmount);
+    event CharityWithdraw(address indexed user, uint256 underlyingAmount);
 
     /// @notice Emitted when a Charity successfully withdraws their fee percent of earned interest.
-    /// @notice Address withdrawan to is not needed because there is only one charity address for a given CharityVault
+    /// @param charity the address of the charity that withdrew - used primarily for indexing
     /// @param underlyingAmount The amount of underlying tokens that were withdrawn.
-    event DonationWithdraw(uint256 underlyingAmount);
+    event DonationWithdraw(address indexed charity, uint256 underlyingAmount);
 
     /*///////////////////////////////////////////////////////////////
                          USER ACTION FUNCTIONS
