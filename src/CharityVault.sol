@@ -13,7 +13,7 @@ import {Vault} from "vaults/Vault.sol";
 /// where a percent of the earned interest is sent to charity.
 contract CharityVault is ERC20, Auth {
     using SafeERC20 for ERC20;
-    
+
     /*///////////////////////////////////////////////////////////////
                                 CONSTANTS
     //////////////////////////////////////////////////////////////*/
@@ -37,10 +37,10 @@ contract CharityVault is ERC20, Auth {
     /// @param _feePercent The percent of earned interest to be routed to the Charity
     constructor(ERC20 _underlying, address payable _charity, uint256 _feePercent, Vault v)
         ERC20(
-            // ex: Fuse DAI Charity Vault
-            string(abi.encodePacked("Fuse ", _underlying.name(), " Charity Vault")),
-            // ex: fcvDAI
-            string(abi.encodePacked("fcv", _underlying.symbol())),
+            // ex: Rari DAI Charity Vault
+            string(abi.encodePacked("Rari ", _underlying.name(), " Charity Vault")),
+            // ex: rcvDAI
+            string(abi.encodePacked("rcv", _underlying.symbol())),
             // ex: 18
             _underlying.decimals()
         )
