@@ -1,9 +1,0 @@
-{
-  "solidity.packageDefaultDependenciesContractsDirectory": "src",
-  "solidity.packageDefaultDependenciesDirectory": "lib",
-  "solidity.compileUsingRemoteVersion": "v0.8.6",
-  "files.associations": {
-    ".dapprc": "shellscript"
-  },
-  "C_Cpp.default.configurationProvider": "ms-vscode.makefile-tools"
-}
