@@ -2,7 +2,7 @@
 pragma solidity ^0.8.6;
 
 import {ERC20} from "solmate/erc20/ERC20.sol";
-import {Bytes32AddressLib} from "vaults/libraries/Bytes32AddressLib.sol";
+import {Bytes32AddressLib} from "solmate/utils/Bytes32AddressLib.sol";
 import {CharityVault} from "./CharityVault.sol";
 import {VaultFactory} from "vaults/VaultFactory.sol";
 
