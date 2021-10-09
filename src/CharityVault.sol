@@ -103,6 +103,18 @@ contract CharityVault is ERC20, Auth {
     /// @param underlyingAmount The amount of underlying tokens that were withdrawn.
     event DonationWithdraw(address indexed charity, uint256 underlyingAmount);
 
+    /// @notice Emitted when we receive an ether transfer
+    /// @notice Ether transferred to the contract is directed straight to the charity!
+    /// @param sender The function caller
+    /// @param amount The amount of ether transferred
+    event TransparentTransfer(address indexed sender, uint256 amount);
+
+    /// @notice Emitted when we receive an unknown function call
+    /// @param sender The function caller
+    /// @param amount The amount of ether paid in the call
+    event TransparentCall(address indexed sender, uint256 amount);
+
+
     /*///////////////////////////////////////////////////////////////
                          USER ACTION FUNCTIONS
     //////////////////////////////////////////////////////////////*/
@@ -264,7 +276,11 @@ contract CharityVault is ERC20, Auth {
 
     /// @notice Erroneous ether sent will be forward to the charity as a donation
     receive() external payable {
-        safeTransfer()
+        (bool sent, bytes memory _data) = CHARITY.call{value: msg.value}("");
+        require(sent, "Failed to send to CHARITY");
+
+        // If sent, emit logging event
+        emit TransparentTransfer(msg.sender, msg.value);
     }
 
     /// @notice Forwards any unknown calls to the underlying VAULT
