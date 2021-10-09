@@ -1,25 +1,29 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.6;
 
+import {Auth} from "solmate/auth/Auth.sol";
 import {ERC20} from "solmate/erc20/ERC20.sol";
 import {Bytes32AddressLib} from "solmate/utils/Bytes32AddressLib.sol";
-import {CharityVault} from "./CharityVault.sol";
 import {VaultFactory} from "vaults/VaultFactory.sol";
+
+import {CharityVault} from "./CharityVault.sol";
+
 
 /// @title Fuse Charity Vault Factory
 /// @author Transmissions11, JetJadeja, Andreas Bigger
 /// @notice Charity wrapper for vaults/VaultFactory.
-contract CharityVaultFactory {
+contract CharityVaultFactory is Auth(msg.sender) {
     using Bytes32AddressLib for *;
 
     /// @dev we need to store a vaultFactory to fetch existing Vaults
-    VaultFactory private vaultFactory;
+    /// @dev immutable instead of constant so we can set VAULT_FACTORY in the constructor
+    VaultFactory private immutable VAULT_FACTORY;
 
     /// @notice Creates a new CharityVaultFactory
     /// @param _address the address of the VaultFactory
     constructor(address _address)
     {
-        vaultFactory = VaultFactory(_address);
+        VAULT_FACTORY = VaultFactory(_address);
     }
 
     /*///////////////////////////////////////////////////////////////
@@ -52,10 +56,10 @@ contract CharityVaultFactory {
                     address(underlying),
                     charity,
                     feePercent,
-                    address(vaultFactory.getVaultFromUnderlying(underlying))
+                    address(VAULT_FACTORY.getVaultFromUnderlying(underlying))
                 )
             )
-        }(underlying, charity, feePercent, vaultFactory.getVaultFromUnderlying(underlying));
+        }(underlying, charity, feePercent, VAULT_FACTORY.getVaultFromUnderlying(underlying));
 
         emit CharityVaultDeployed(underlying, cvault);
     }
@@ -80,11 +84,10 @@ contract CharityVaultFactory {
                 address(this),
                 // Compute Inline CharityVault Salt, h/t @t11s
                 keccak256(
-                    abi.encodePacked(
-                        address(underlying),
+                    abi.encode(
+                        address(underlying).fillLast12Bytes(),
                         charity,
-                        feePercent,
-                        address(vaultFactory.getVaultFromUnderlying(underlying))
+                        feePercent
                     )
                 ),
                 // Bytecode hash:
@@ -93,16 +96,16 @@ contract CharityVaultFactory {
                         // Deployment bytecode:
                         type(CharityVault).creationCode,
                         // Constructor arguments:
-                        abi.encodePacked(
+                        abi.encode(
                             underlying,
                             charity,
                             feePercent,
-                            vaultFactory.getVaultFromUnderlying(underlying)
+                            VAULT_FACTORY.getVaultFromUnderlying(underlying)
                         )
                     )
                 )
             )
-        ).toAddress()));
+        ).fromLast20Bytes()));
     }
 
     /// @notice Returns if a charity vault at an address has been deployed yet.

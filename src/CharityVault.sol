@@ -7,6 +7,9 @@ import {SafeERC20} from "solmate/erc20/SafeERC20.sol";
 import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 import {Vault} from "vaults/Vault.sol";
 
+import {CharityVaultFactory} from "./CharityVaultFactory.sol";
+
+
 /// @title Fuse Charity Vault (fcvToken)
 /// @author Transmissions11, JetJadeja, Andreas Bigger, Nicolas Neven, Adam Egyed
 /// @notice Yield bearing token that enables users to swap
@@ -22,6 +25,7 @@ contract CharityVault is ERC20, Auth {
 
     /// @dev we need to compose a Vault here because the Vault functions are external
     /// @dev which are not able to be overridden since that requires public virtual specifiers
+    /// @dev immutable instead of constant so we can set VAULT in the constructor
     Vault private immutable VAULT;
 
     /// @notice The underlying token for the vault.
@@ -33,7 +37,13 @@ contract CharityVault is ERC20, Auth {
     address payable public immutable CHARITY;
 
     /// @notice the percent of the earned interest that should be redirected to the charity
+    /// @dev immutable instead of constant so we can set FEE_PERCENT in the constructor
     uint256 public immutable FEE_PERCENT;
+
+    /// @notice One base unit of the underlying, and hence rvToken.
+    /// @dev Will be equal to 10 ** UNDERLYING.decimals() which means
+    /// if the token has 18 decimals ONE_WHOLE_UNIT will equal 10**18.
+    uint256 public immutable BASE_UNIT;
 
     /// @notice Creates a new charity vault based on an underlying token.
     /// @param _UNDERLYING An underlying ERC20 compliant token.
@@ -43,25 +53,29 @@ contract CharityVault is ERC20, Auth {
     constructor(ERC20 _UNDERLYING, address payable _CHARITY, uint256 _FEE_PERCENT, Vault _VAULT)
         ERC20(
             // ex: Rari DAI Charity Vault
-            string(abi.encodePacked("Rari ", _underlying.name(), " Charity Vault")),
+            string(abi.encodePacked("Rari ", _UNDERLYING.name(), " Charity Vault")),
             // ex: rcvDAI
-            string(abi.encodePacked("rcv", _underlying.symbol())),
+            string(abi.encodePacked("rcv", _UNDERLYING.symbol())),
             // ex: 18
-            _underlying.decimals()
+            _UNDERLYING.decimals()
         )
         Auth(
             // Set the CharityVault's owner to the CharityVaultFactory's owner:
             CharityVaultFactory(msg.sender).owner()
         )
     {
-        // Enforce feePercent
+        // Enforce FEE_PERCENT
         require(_FEE_PERCENT >= 0 && _FEE_PERCENT <= 100, "Fee Percent fails to meet [0, 100] bounds constraint.");
 
         // Define our immutables
-        UNDERLYING = _underlying;
+        UNDERLYING = _UNDERLYING;
         CHARITY = _CHARITY;
         FEE_PERCENT = _FEE_PERCENT;
         VAULT = _VAULT;
+
+        // TODO: Once we upgrade to 0.8.9 we can use 10**decimals
+        // instead which will save us an external call and SLOAD.
+        BASE_UNIT = 10**_UNDERLYING.decimals();
 
         // ?? We shouldn't ever create a new vault here right ??
         // ?? Vaults should already exist ??
@@ -93,47 +107,64 @@ contract CharityVault is ERC20, Auth {
                          USER ACTION FUNCTIONS
     //////////////////////////////////////////////////////////////*/
 
-    /// @notice Deposit the vault's underlying token to mint fcvTokens.
+    /// @notice Deposit the vault's underlying token to mint rcvTokens.
     /// @param underlyingAmount The amount of the underlying token to deposit.
     function deposit(uint256 underlyingAmount) external {
-        _mint(msg.sender, (underlyingAmount * 10**decimals) / exchangeRateCurrent());
+        // We don't allow depositing 0 to prevent emitting a useless event.
+        require(underlyingAmount != 0, "AMOUNT_CANNOT_BE_ZERO");
 
-        // Transfer in underlying tokens from the sender to the vault
-        underlying.safeTransferFrom(msg.sender, address(vault), underlyingAmount);
+        // ?? Do we need to mint prior or post in case VAULT revert ??
+
+        // Transfer in UNDERLYING tokens from the sender to the vault
+        UNDERLYING.safeTransferFrom(msg.sender, address(this), underlyingAmount);
+
+        // Deposit to the VAULT
+        VAULT.deposit(underlyingAmount);
+
+        // Determine the equivalent amount of rcvTokens and mint them.
+        _mint(msg.sender, underlyingAmount.fdiv(exchangeRate(), BASE_UNIT));
 
         emit CharityDeposit(msg.sender, underlyingAmount);
+
     }
 
-    /// @notice Burns fcvTokens and sends underlying tokens to the caller.
-    /// @param amount The amount of fcvTokens to redeem for underlying tokens.
-    function withdraw(uint256 amount) external {
-        // Query the vault's exchange rate.
-        uint256 exchangeRate = exchangeRateCurrent();
+    /// @notice Burns rcvTokens and sends underlying tokens to the caller.
+    /// @param underlyingAmount The amount of underlying tokens to withdraw
+    function withdraw(uint256 underlyingAmount) external {
+        // We don't allow withdrawing 0 to prevent emitting a useless event.
+        require(underlyingAmount != 0, "AMOUNT_CANNOT_BE_ZERO");
 
-        // Convert the amount of fcvTokens to underlying tokens.
-        // This can be done by multiplying the fcvTokens by the exchange rate.
-        uint256 underlyingAmount = (exchangeRate * amount) / 10**decimals;
+        // Withdraw from the VAULT
+        VAULT.withdraw(underlyingAmount);
 
-        // Burn inputed fcvTokens.
-        _burn(msg.sender, amount);
+        // Transfer underlying tokens to the user.
+        UNDERLYING.safeTransfer(msg.sender, underlyingAmount);
+
+        // Determine the equivalent amount of rcvTokens and burn them.
+        // This will revert if the user does not have enough rcvTokens.
+        _burn(msg.sender, underlyingAmount.fdiv(exchangeRate(), BASE_UNIT));
+
+        emit CharityWithdraw(msg.sender, underlyingAmount);
+
+
+
 
         // If the withdrawal amount is greater than the float, pull tokens from Fuse.
         // if (underlyingAmount > getFloat()) vault.pullIntoFloat(underlyingAmount);
 
         // TODO: this needs to be updated to include charity withdraw
         // Transfer tokens to the caller.
-        underlying.safeTransfer(msg.sender, underlyingAmount);
+        UNDERLYING.safeTransfer(msg.sender, underlyingAmount);
 
-        emit CharityWithdraw(msg.sender, underlyingAmount);
     }
 
-    /// @notice Burns fcvTokens and sends underlying tokens to the caller.
+    /// @notice Burns rcvTokens and sends underlying tokens to the caller.
     /// @param underlyingAmount The amount of underlying tokens to withdraw.
     function withdrawUnderlying(uint256 underlyingAmount) external {
         // Query the vault's exchange rate.
         uint256 exchangeRate = exchangeRateCurrent();
 
-        // Convert underlying tokens to fcvTokens and then burn them.
+        // Convert underlying tokens to rcvTokens and then burn them.
         // This can be done by multiplying the underlying tokens by the exchange rate.
         _burn(msg.sender, (exchangeRate * underlyingAmount) / 10**decimals);
 
@@ -143,7 +174,7 @@ contract CharityVault is ERC20, Auth {
 
         // TODO: this needs to be updated to calculate how much use should get
         // Transfer underlying tokens to the sender.
-        underlying.safeTransfer(msg.sender, underlyingAmount);
+        UNDERLYING.safeTransfer(msg.sender, underlyingAmount);
 
         emit CharityWithdraw(msg.sender, underlyingAmount);
     }
@@ -151,88 +182,98 @@ contract CharityVault is ERC20, Auth {
     // TODO: Charity Withdraw function
     // TODO: this function should only be callable by the charity
 
-    /// @notice Burns fcvTokens and sends underlying tokens to the charity.
-    /// @param amount The amount of fcvTokens to redeem for underlying tokens.
+    /// @notice Burns rcvTokens and sends underlying tokens to the charity.
+    /// @param amount The amount of rcvTokens to redeem for underlying tokens.
     function charityWithdraw(uint256 amount) external {
         // Query the vault's exchange rate.
         uint256 exchangeRate = exchangeRateCurrent();
 
         // TODO: we have to somehow keep track of how much is owed to the charity vs the user
-        // Convert the amount of fcvTokens to underlying tokens.
-        // This can be done by multiplying the fcvTokens by the exchange rate.
-        uint256 underlyingAmount = ((exchangeRate * amount) / 10**decimals) * (feePercent / 100.0);
+        // Convert the amount of rcvTokens to underlying tokens.
+        // This can be done by multiplying the rcvTokens by the exchange rate.
+        uint256 underlyingAmount = ((exchangeRate * amount) / 10**decimals) * (FEE_PERCENT / 100.0);
 
-        // Burn inputed fcvTokens.
-        _burn(charity, amount);
+        // Burn inputed rcvTokens.
+        _burn(CHARITY, amount);
 
         // If the withdrawal amount is greater than the float, pull tokens from Fuse.
         // if (underlyingAmount > getFloat()) vault.pullIntoFloat(underlyingAmount);
 
         // TODO: this needs to be updated to include charity withdraw
         // Transfer tokens to the charity.
-        underlying.safeTransfer(charity, underlyingAmount);
+        UNDERLYING.safeTransfer(CHARITY, underlyingAmount);
 
         emit DonationWithdraw(underlyingAmount);
     }
 
-
     /*///////////////////////////////////////////////////////////////
-                         SHARE PRICE FUNCTIONS
+                        CHARITY ACCOUNTING LOGIC
     //////////////////////////////////////////////////////////////*/
 
-    /// @notice Returns a user's balance in underlying tokens.
-    /// @dev Fetch the underlying balance for the user from the composed Vault
+
+
+
+    /*///////////////////////////////////////////////////////////////
+                        VAULT ACCOUNTING LOGIC
+    //////////////////////////////////////////////////////////////*/
+
+    /// @notice Returns a user's Vault balance in underlying tokens.
+    /// @return The user's Vault balance in underlying tokens.
     function balanceOfUnderlying(address account) external view returns (uint256) {
-        return vault.balanceOfUnderlying(account);
+        return balanceOf[account].fmul(exchangeRate(), BASE_UNIT);
     }
 
-    /// @notice Returns the current fcvToken exchange rate, scaled by 1e18.
-    function exchangeRateCurrent() public view returns (uint256) {
-        // Store the vault's total underlying balance and fcvToken supply.
-        uint256 supply = totalSupply;
-        uint256 balance = calculateTotalFreeUnderlying();
+    /// @notice Returns the amount of underlying tokens an rvToken can be redeemed for.
+    /// @return The amount of underlying tokens an rvToken can be redeemed for.
+    function exchangeRate() public view returns (uint256) {
+        // If there are no rvTokens in circulation, return an exchange rate of 1:1.
+        if (totalSupply == 0) return BASE_UNIT;
 
-        // If the supply or balance is zero, return an exchange rate of 1.
-        if (supply == 0 || balance == 0) return 10**decimals;
-
-        // Calculate the exchange rate by diving the underlying balance by the fcvToken supply.
-        return (balance * 10**decimals) / supply;
+        // TODO: Optimize double SLOAD of totalSupply here?
+        // Calculate the exchange rate by diving the total holdings by the rvToken supply.
+        return totalHoldings().fdiv(totalSupply, BASE_UNIT);
     }
 
-    /*///////////////////////////////////////////////////////////////
-                           CALCULATION FUNCTIONS
-    //////////////////////////////////////////////////////////////*/
-
-    /// @notice Returns the amount of underlying tokens that idly sit in the vault.
-    /// @dev The Float is handled inside the Vault
-    function getFloat() public view returns (uint256) {
-        return vault.getFloat();
-    }
-
-    /// @notice Calculate the total amount of free underlying tokens.
-    function calculateTotalFreeUnderlying() public view returns (uint256) {
+    /// @notice Calculate the total amount of tokens the Vault currently holds for depositors.
+    /// @return The total amount of tokens the Vault currently holds for depositors.
+    function totalHoldings() public view returns (uint256) {
         // Subtract locked profit from the amount of total deposited tokens and add the float value.
-        // We subtract the locked profit from the total deposited tokens because it is included in totalDeposited.
-        return getFloat() + vault.totalDeposited() - vault.calculateLockedProfit();
+        // We subtract locked profit from totalStrategyHoldings because maxLockedProfit is baked into it.
+        return totalFloat() + (totalStrategyHoldings - lockedProfit());
     }
 
-    /// @notice Calculate the total amount of free underlying tokens.
-    function calculateDepositorTotalFreeUnderlying() public view returns (uint256) {
-        // Subtract locked profit from the amount of total deposited tokens and add the float value.
-        // We subtract the locked profit from the total deposited tokens because it is included in totalDeposited.
-        // Multiply by 1 - the percent to be donated to charity
-        return (getFloat() + vault.totalDeposited() - vault.calculateLockedProfit()) * ((100.0 - feePercent) / 100.0);
+    /// @notice Calculate the current amount of locked profit.
+    /// @return The current amount of locked profit.
+    function lockedProfit() public view returns (uint256) {
+        // TODO: Cache SLOADs?
+        return
+            block.timestamp >= lastHarvest + profitUnlockDelay
+                ? 0 // If profit unlock delay has passed, there is no locked profit.
+                : maxLockedProfit - (maxLockedProfit * (block.timestamp - lastHarvest)) / profitUnlockDelay;
     }
 
-    /// @notice Calculate the total amount of free underlying tokens.
-    function calculateCharityTotalFreeUnderlying() public view returns (uint256) {
-        // Subtract locked profit from the amount of total deposited tokens and add the float value.
-        // We subtract the locked profit from the total deposited tokens because it is included in totalDeposited.
-        // Multiply by the percent to be donated to charity
-        return (getFloat() + vault.totalDeposited() - vault.calculateLockedProfit()) * (feePercent / 100.0);
+    /// @notice Returns the amount of underlying tokens that idly sit in the Vault.
+    /// @return The amount of underlying tokens that sit idly in the Vault.
+    function totalFloat() public view returns (uint256) {
+        return UNDERLYING.balanceOf(address(this));
     }
 
+    /// @notice Erroneous ether sent will be forward to the charity as a donation
+    receive() external payable {
+        safeTransfer()
+    }
 
-
-    receive() external payable {}
+    /// @notice Forwards any unknown calls to the underlying VAULT
+    /// @dev Uses the Solidity 0.6 receive split fallback functionality as specified in the blog
+    /// @dev https://blog.soliditylang.org/2020/03/26/fallback-receive-split/
+    fallback() external payable {
+            assembly {
+                calldatacopy(0, 0, calldatasize())
+                let result := delegatecall(gas(), payable(address(VAULT)), 0, calldatasize(), 0, 0)
+                returndatacopy(0, 0, returndatasize())
+                switch result
+                case 0 { revert(0, returndatasize()) }
+                default { return(0, returndatasize()) }
+            }
+        }
 }
