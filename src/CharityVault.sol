@@ -116,7 +116,7 @@ contract CharityVault is ERC20, Auth {
 
 
     /*///////////////////////////////////////////////////////////////
-                         USER ACTION FUNCTIONS
+                         DEPOSIT/WITHDRAWAL LOGIC
     //////////////////////////////////////////////////////////////*/
 
     /// @notice Deposit the vault's underlying token to mint rcvTokens.
@@ -164,7 +164,6 @@ contract CharityVault is ERC20, Auth {
         // If the withdrawal amount is greater than the float, pull tokens from Fuse.
         // if (underlyingAmount > getFloat()) vault.pullIntoFloat(underlyingAmount);
 
-        // TODO: this needs to be updated to include charity withdraw
         // Transfer tokens to the caller.
         UNDERLYING.safeTransfer(msg.sender, underlyingAmount);
 
@@ -222,8 +221,20 @@ contract CharityVault is ERC20, Auth {
                         CHARITY ACCOUNTING LOGIC
     //////////////////////////////////////////////////////////////*/
 
+    /// @dev map user balances to a fraction representing their remaining underlying vs a charity
+    mapping(address => uint256) fractionalBalance;
 
+    /// @notice Function to rebalance a user's remaining available underlying token amount
+    /// @dev this rebalances the fractionBalance[user] to split the underlying amount accurately
+    function fractionalRebalance(address user, bool is_charity, uint256 withdraw_amount, uint256 user_balance) internal {
+        if is_charity {
+            uint256 withdrawl = FEE_PERCENT * user_bal;
+            // VAULT.withdraw(withdrawal);
+            fractionalBalance[user] = 
+        } else {
 
+        }
+    }
 
     /*///////////////////////////////////////////////////////////////
                         VAULT ACCOUNTING LOGIC
