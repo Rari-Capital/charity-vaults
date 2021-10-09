@@ -258,6 +258,10 @@ contract CharityVault is ERC20, Auth {
         return UNDERLYING.balanceOf(address(this));
     }
 
+    /*///////////////////////////////////////////////////////////////
+                        TRANSPARENT FALLBACK FUNCTIONALITY
+    //////////////////////////////////////////////////////////////*/
+
     /// @notice Erroneous ether sent will be forward to the charity as a donation
     receive() external payable {
         safeTransfer()
