@@ -37,8 +37,8 @@ contract CharityVault is ERC20, Auth {
     address payable public immutable CHARITY;
 
     /// @notice the percent of the earned interest that should be redirected to the charity
-    /// @dev immutable instead of constant so we can set FEE_PERCENT in the constructor
-    uint256 public immutable FEE_PERCENT;
+    /// @dev immutable instead of constant so we can set BASE_FEE in the constructor
+    uint256 public immutable BASE_FEE;
 
     /// @notice One base unit of the underlying, and hence rvToken.
     /// @dev Will be equal to 10 ** UNDERLYING.decimals() which means
@@ -48,9 +48,9 @@ contract CharityVault is ERC20, Auth {
     /// @notice Creates a new charity vault based on an underlying token.
     /// @param _UNDERLYING An underlying ERC20 compliant token.
     /// @param _CHARITY The address of the charity
-    /// @param _FEE_PERCENT The percent of earned interest to be routed to the Charity
+    /// @param _BASE_FEE The percent of earned interest to be routed to the Charity
     /// @param _VAULT The existing/deployed Vault for the respective underlying token
-    constructor(ERC20 _UNDERLYING, address payable _CHARITY, uint256 _FEE_PERCENT, Vault _VAULT)
+    constructor(ERC20 _UNDERLYING, address payable _CHARITY, uint256 _BASE_FEE, Vault _VAULT)
         ERC20(
             // ex: Rari DAI Charity Vault
             string(abi.encodePacked("Rari ", _UNDERLYING.name(), " Charity Vault")),
@@ -64,13 +64,13 @@ contract CharityVault is ERC20, Auth {
             CharityVaultFactory(msg.sender).owner()
         )
     {
-        // Enforce FEE_PERCENT
-        require(_FEE_PERCENT >= 0 && _FEE_PERCENT <= 100, "Fee Percent fails to meet [0, 100] bounds constraint.");
+        // Enforce BASE_FEE
+        require(_BASE_FEE >= 0 && _BASE_FEE <= 100, "Fee Percent fails to meet [0, 100] bounds constraint.");
 
         // Define our immutables
         UNDERLYING = _UNDERLYING;
         CHARITY = _CHARITY;
-        FEE_PERCENT = _FEE_PERCENT;
+        BASE_FEE = _BASE_FEE;
         VAULT = _VAULT;
 
         // TODO: Once we upgrade to 0.8.9 we can use 10**decimals
@@ -202,15 +202,58 @@ contract CharityVault is ERC20, Auth {
         // TODO: we have to somehow keep track of how much is owed to the charity vs the user
         // Convert the amount of rcvTokens to underlying tokens.
         // This can be done by multiplying the rcvTokens by the exchange rate.
-        uint256 underlyingAmount = ((exchangeRate * amount) / 10**decimals) * (FEE_PERCENT / 100.0);
+        uint256 underlyingAmount = ((exchangeRate * amount) / 10**decimals) * (BASE_FEE / 100.0);
 
         // Burn inputed rcvTokens.
         _burn(CHARITY, amount);
 
-        // If the withdrawal amount is greater than the float, pull tokens from Fuse.
-        // if (underlyingAmount > getFloat()) vault.pullIntoFloat(underlyingAmount);
+        // Get the user's underlying balance
+        uint256 user_balance = VAULT.balanceOfUnderlying(msg.sender);
 
-        // TODO: this needs to be updated to include charity withdraw
+        // TODO: get their earned interest
+        uint256 userEarnedInterest = 0;
+
+        // Calculate earned interest less withdrawals
+        uint256 remainingInterest = userEarnedInterest - underlyingAmount;
+
+        // TODO: how to get user since msg.sender == charity not the user :/
+
+        // Calulate adjusted interest less accumulators
+        uint256 adjustedInterest = userEarnedInterest - (
+            charityAccumulatedRewards[user] +
+            userAccumulatedRewards[user]
+        );
+
+        // Calculate adjusted charity and user interest (less withdrawals)
+        uint256 adjustedCharityInterest = adjustedBaseFee[user] * adjustedInterest;
+        uint256 adjustedUserInterest = (1 - adjustedBaseFee[user]) * adjustedInterest;
+
+        // Calculate the claimable underlying for the charity
+        uint256 charityClaimableUnderlying = charityAccumulatedRewards[user] + adjustedInterest * adjustedBaseFee[user];
+
+        // Verify there is enough underlying available for charity to withdraw/claim
+        require(
+            underlyingAmount < charityClaimableUnderlying,
+            "Request withdrawal amount exceeds claimable interest!"
+        );
+
+        // Remaining charity claimable after withdrawal
+        uint256 remainingCharityClaimable = charityClaimableUnderlying - underlyingAmount;
+
+        // Remaining user claimable
+        uint256 remainingUserClaimable = userAccumulatedRewards[user] + adjustedInterest * (1 - adjustedBaseFee[user]);
+
+        // Update the Fee Percents
+        adjustedBaseFee[user] = BASE_FEE * (
+            (ORIGINAL_DEPOSIT + remainingCharityClaimable) 
+            /
+            (ORIGINAL_DEPOSIT + remainingCharityClaimable + remainingUserClaimable)
+        );
+
+        // Update the Accumulators
+        userAccumulatedRewards[user] = userAccumulatedRewards[user] + adjustedUserInterest;
+        charityAccumulatedRewards[user] = charityAccumulatedRewards[user] + adjustedCharityInterest - underlyingAmount;
+
         // Transfer tokens to the charity.
         UNDERLYING.safeTransfer(CHARITY, underlyingAmount);
 
@@ -221,20 +264,17 @@ contract CharityVault is ERC20, Auth {
                         CHARITY ACCOUNTING LOGIC
     //////////////////////////////////////////////////////////////*/
 
-    /// @dev map user balances to a fraction representing their remaining underlying vs a charity
-    mapping(address => uint256) fractionalBalance;
+    /// @dev User accumulated rewards on withdrawals
+    /// @dev Maps a user deposit address to the accumulated user rewards up to a given withdrawal
+    mapping(address => uint256) userAccumulatedRewards;
 
-    /// @notice Function to rebalance a user's remaining available underlying token amount
-    /// @dev this rebalances the fractionBalance[user] to split the underlying amount accurately
-    function fractionalRebalance(address user, bool is_charity, uint256 withdraw_amount, uint256 user_balance) internal {
-        if is_charity {
-            uint256 withdrawl = FEE_PERCENT * user_bal;
-            // VAULT.withdraw(withdrawal);
-            fractionalBalance[user] = 
-        } else {
+    /// @notice Charity accumulated rewards on withdrawals
+    /// @dev Maps a user deposit address to the accumulated charity rewards up to a given withdrawal
+    mapping(address => uint256) charityAccumulatedRewards;
 
-        }
-    }
+    /// @notice The adjusted base fee percent to be sent to a user
+    /// @dev Maps a user to the adjusted base fee percent
+    mapping(address => uint256) adjustedBaseFee;
 
     /*///////////////////////////////////////////////////////////////
                         VAULT ACCOUNTING LOGIC

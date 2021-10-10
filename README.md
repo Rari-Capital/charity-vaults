@@ -15,7 +15,7 @@ make
 
 1. Are users able to permissionlessly create Vaults?
 ```
-A: Should be yes since the VaultFactory `deployVault` function doesn't have any modifiers or anything.
+A: Yes, users can permissionlessly create Vaults using the [`VaultFactory`](https://github.com/Rari-Capital/vaults/blob/main/src/VaultFactory.sol) `deployVault` function. By extension, the [`CharityVaultsFactory`](https://github.com/Rari-Capital/charity-vaults/blob/main/src/CharityVaultFactory.sol) allows users to deploy [`CharityVaults`](https://github.com/Rari-Capital/charity-vaults/blob/main/src/CharityVault.sol) permissionlessly using it's `deployCharityVault` function.
 ```
 
 2. How do we envision deposits in a Vault from a ui perspective?
