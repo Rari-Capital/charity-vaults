@@ -347,18 +347,4 @@ contract CharityVault is ERC20, Auth {
         // If sent, emit logging event
         emit TransparentTransfer(msg.sender, msg.value);
     }
-
-    /// @notice Forwards any unknown calls to the underlying VAULT
-    /// @dev Uses the Solidity 0.6 receive split fallback functionality as specified in the blog
-    /// @dev https://blog.soliditylang.org/2020/03/26/fallback-receive-split/
-    fallback() external payable {
-            assembly {
-                calldatacopy(0, 0, calldatasize())
-                let result := delegatecall(gas(), payable(address(VAULT)), 0, calldatasize(), 0, 0)
-                returndatacopy(0, 0, returndatasize())
-                switch result
-                case 0 { revert(0, returndatasize()) }
-                default { return(0, returndatasize()) }
-            }
-        }
 }
