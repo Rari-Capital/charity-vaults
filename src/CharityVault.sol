@@ -339,6 +339,8 @@ contract CharityVault is ERC20, Auth {
                         TRANSPARENT FALLBACK FUNCTIONALITY
     //////////////////////////////////////////////////////////////*/
 
+    // TODO: remove?
+
     /// @notice Erroneous ether sent will be forward to the charity as a donation
     receive() external payable {
         (bool sent, bytes memory _data) = CHARITY.call{value: msg.value}("");
