@@ -11,6 +11,20 @@ make
 ```
 
 
+### Generate Pretty Visuals
+
+We use [surya](https://github.com/ConsenSys/surya) to create contract diagrams.
+
+Run `npm run visualize` to generate an amalgamated contract visualization in the `./assets/` directory. Or use the below commands for each respective contract.
+
+##### CharityVault.sol
+
+Run `surya graph -s src/CharityVault.sol | dot -Tpng > assets/CharityVault.png`
+
+#### CharityVaultFactory.sol
+
+Run `surya graph -s src/CharityVaultFactory.sol | dot -Tpng > assets/CharityVaultFactory.png`
+
 ### FAQS
 
 1. Are users able to permissionlessly create Vaults?

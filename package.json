@@ -10,10 +10,12 @@
     "url": "git+https://github.com/Rari-Capital/charity-vaults.git"
   },
   "scripts": {
-    "lint": "prettier --write src/**/*.sol"
+    "lint": "prettier --write src/**/*.sol",
+    "visualize": "surya graph -s src/**/*.sol | dot -Tpng > assets/contracts.png"
   },
   "devDependencies": {
     "prettier": "^2.3.1",
-    "prettier-plugin-solidity": "^1.0.0-beta.13"
+    "prettier-plugin-solidity": "^1.0.0-beta.13",
+    "surya": "^0.4.3"
   }
 }

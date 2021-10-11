@@ -125,8 +125,6 @@ contract CharityVault is ERC20, Auth {
         // We don't allow depositing 0 to prevent emitting a useless event.
         require(underlyingAmount != 0, "AMOUNT_CANNOT_BE_ZERO");
 
-        // ?? Do we need to mint prior or post in case VAULT revert ??
-
         // Transfer in UNDERLYING tokens from the sender to the vault
         UNDERLYING.safeTransferFrom(msg.sender, address(this), underlyingAmount);
 
@@ -159,11 +157,6 @@ contract CharityVault is ERC20, Auth {
         emit CharityWithdraw(msg.sender, underlyingAmount);
 
 
-
-
-        // If the withdrawal amount is greater than the float, pull tokens from Fuse.
-        // if (underlyingAmount > getFloat()) vault.pullIntoFloat(underlyingAmount);
-
         // Transfer tokens to the caller.
         UNDERLYING.safeTransfer(msg.sender, underlyingAmount);
 
@@ -190,16 +183,12 @@ contract CharityVault is ERC20, Auth {
         emit CharityWithdraw(msg.sender, underlyingAmount);
     }
 
-    // TODO: Charity Withdraw function
-    // TODO: this function should only be callable by the charity
-
     /// @notice Burns rcvTokens and sends underlying tokens to the charity.
     /// @param amount The amount of rcvTokens to redeem for underlying tokens.
     function charityWithdraw(uint256 amount) external {
         // Query the vault's exchange rate.
         uint256 exchangeRate = exchangeRateCurrent();
 
-        // TODO: we have to somehow keep track of how much is owed to the charity vs the user
         // Convert the amount of rcvTokens to underlying tokens.
         // This can be done by multiplying the rcvTokens by the exchange rate.
         uint256 underlyingAmount = ((exchangeRate * amount) / 10**decimals) * (BASE_FEE / 100.0);
@@ -207,16 +196,17 @@ contract CharityVault is ERC20, Auth {
         // Burn inputed rcvTokens.
         _burn(CHARITY, amount);
 
+        // TODO: how to get user since msg.sender == charity not the user :/
+        address user = 0x0;
+
         // Get the user's underlying balance
-        uint256 user_balance = VAULT.balanceOfUnderlying(msg.sender);
+        uint256 user_balance = VAULT.balanceOfUnderlying(user);
 
         // TODO: get their earned interest
         uint256 userEarnedInterest = 0;
 
         // Calculate earned interest less withdrawals
         uint256 remainingInterest = userEarnedInterest - underlyingAmount;
-
-        // TODO: how to get user since msg.sender == charity not the user :/
 
         // Calulate adjusted interest less accumulators
         uint256 adjustedInterest = userEarnedInterest - (

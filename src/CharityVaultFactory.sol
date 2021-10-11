@@ -52,11 +52,11 @@ contract CharityVaultFactory is Auth(msg.sender) {
         cvault = new CharityVault{
             // Compute Inline CharityVault Salt, h/t @t11s
             salt: keccak256(
-                abi.encodePacked(
-                    address(underlying),
+                abi.encode(
+                    address(underlying).fillLast12Bytes(),
                     charity,
-                    feePercent,
-                    address(VAULT_FACTORY.getVaultFromUnderlying(underlying))
+                    feePercent
+                    // address(VAULT_FACTORY.getVaultFromUnderlying(underlying))
                 )
             )
         }(underlying, charity, feePercent, VAULT_FACTORY.getVaultFromUnderlying(underlying));
