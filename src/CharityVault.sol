@@ -91,17 +91,17 @@ contract CharityVault is ERC20, Auth {
     /// @notice Emitted after a successful deposit.
     /// @param user The address of the account that deposited into the vault.
     /// @param underlyingAmount The amount of underlying tokens that were deposited.
-    event CharityDeposit(address indexed user, uint256 underlyingAmount);
+    event DepositCV(address indexed user, uint256 underlyingAmount);
 
-    /// @notice Emitted after a successful withdrawal.
+    /// @notice Emitted after a successful user withdrawal.
     /// @param user The address of the account that withdrew from the vault.
     /// @param underlyingAmount The amount of underlying tokens that were withdrawn.
-    event CharityWithdraw(address indexed user, uint256 underlyingAmount);
+    event WithdrawCV(address indexed user, uint256 underlyingAmount);
 
     /// @notice Emitted when a Charity successfully withdraws their fee percent of earned interest.
     /// @param charity the address of the charity that withdrew - used primarily for indexing
     /// @param underlyingAmount The amount of underlying tokens that were withdrawn.
-    event DonationWithdraw(address indexed charity, uint256 underlyingAmount);
+    event CharityWithdrawCV(address indexed charity, uint256 underlyingAmount);
 
     /// @notice Emitted when we receive an ether transfer
     /// @notice Ether transferred to the contract is directed straight to the charity!
@@ -125,17 +125,15 @@ contract CharityVault is ERC20, Auth {
         // We don't allow depositing 0 to prevent emitting a useless event.
         require(underlyingAmount != 0, "AMOUNT_CANNOT_BE_ZERO");
 
-        // Transfer in UNDERLYING tokens from the sender to the vault
-        UNDERLYING.safeTransferFrom(msg.sender, address(this), underlyingAmount);
+        // Determine the equivalent amount of rcvTokens and mint them.
+        _mint(msg.sender, underlyingAmount.fdiv(exchangeRate(), BASE_UNIT));
+        emit DepositCV(msg.sender, underlyingAmount);
 
         // Deposit to the VAULT
         VAULT.deposit(underlyingAmount);
 
-        // Determine the equivalent amount of rcvTokens and mint them.
-        _mint(msg.sender, underlyingAmount.fdiv(exchangeRate(), BASE_UNIT));
-
-        emit CharityDeposit(msg.sender, underlyingAmount);
-
+        // Transfer in UNDERLYING tokens from the sender to the vault
+        UNDERLYING.safeTransferFrom(msg.sender, address(this), underlyingAmount);
     }
 
     /// @notice Burns rcvTokens and sends underlying tokens to the caller.
@@ -144,48 +142,75 @@ contract CharityVault is ERC20, Auth {
         // We don't allow withdrawing 0 to prevent emitting a useless event.
         require(underlyingAmount != 0, "AMOUNT_CANNOT_BE_ZERO");
 
-        // Withdraw from the VAULT
-        VAULT.withdraw(underlyingAmount);
-
-        // Transfer underlying tokens to the user.
-        UNDERLYING.safeTransfer(msg.sender, underlyingAmount);
-
-        // Determine the equivalent amount of rcvTokens and burn them.
-        // This will revert if the user does not have enough rcvTokens.
-        _burn(msg.sender, underlyingAmount.fdiv(exchangeRate(), BASE_UNIT));
-
-        emit CharityWithdraw(msg.sender, underlyingAmount);
-
-
-        // Transfer tokens to the caller.
-        UNDERLYING.safeTransfer(msg.sender, underlyingAmount);
-
-    }
-
-    /// @notice Burns rcvTokens and sends underlying tokens to the caller.
-    /// @param underlyingAmount The amount of underlying tokens to withdraw.
-    function withdrawUnderlying(uint256 underlyingAmount) external {
         // Query the vault's exchange rate.
         uint256 exchangeRate = exchangeRateCurrent();
 
-        // Convert underlying tokens to rcvTokens and then burn them.
-        // This can be done by multiplying the underlying tokens by the exchange rate.
-        _burn(msg.sender, (exchangeRate * underlyingAmount) / 10**decimals);
+        // Convert the amount of rcvTokens to underlying tokens.
+        // This can be done by multiplying the rcvTokens by the exchange rate.
+        uint256 underlyingAmount = ((exchangeRate * amount) / 10**decimals) * (BASE_FEE / 100.0);
 
-        // If the withdrawal amount is greater than the float, pull tokens from Fuse.
-        // TODO: how to pull in float?
-        // if (getFloat() < underlyingAmount) vault.pullIntoFloat(underlyingAmount);
+        // Burn inputed rcvTokens.
+        _burn(msg.sender, amount);
+        emit WithdrawCV(msg.sender, underlyingAmount);
 
-        // TODO: this needs to be updated to calculate how much use should get
-        // Transfer underlying tokens to the sender.
+        // Get the user's underlying balance
+        // TODO: can remove if we can directly just get the user's earned interest from below
+        uint256 user_balance = VAULT.balanceOfUnderlying(msg.sender);
+
+        // TODO: get their earned interest
+        uint256 userEarnedInterest = 0;
+
+        // Calculate earned interest less withdrawals
+        uint256 remainingInterest = userEarnedInterest - underlyingAmount;
+
+        // Calulate adjusted interest less accumulators
+        uint256 adjustedInterest = userEarnedInterest - (
+            charityAccumulatedRewards[msg.sender] +
+            userAccumulatedRewards[msg.sender]
+        );
+
+        // Calculate adjusted charity and user interest (less withdrawals)
+        uint256 adjustedCharityInterest = adjustedBaseFee[msg.sender] * adjustedInterest;
+        uint256 adjustedUserInterest = (1 - adjustedBaseFee[msg.sender]) * adjustedInterest;
+
+        // Calculate the claimable underlying for the user
+        uint256 userClaimableUnderlying = userAccumulatedRewards[msg.sender] + adjustedInterest * (1 - adjustedBaseFee[msg.sender]);
+
+        // Verify there is enough underlying available for user to withdraw/claim
+        require(
+            underlyingAmount < userClaimableUnderlying,
+            "Request withdrawal amount exceeds claimable interest!"
+        );
+
+        // Remaining user claimable after withdrawal
+        uint256 remainingUserClaimable = userClaimableUnderlying - underlyingAmount;
+
+        // Remaining charity claimable
+        uint256 remainingCharityClaimable = charityAccumulatedRewards[msg.sender] + adjustedInterest * adjustedBaseFee[msg.sender];
+
+        // Update the Fee Percents
+        adjustedBaseFee[msg.sender] = BASE_FEE * (
+            (ORIGINAL_DEPOSIT + remainingCharityClaimable) 
+            /
+            (ORIGINAL_DEPOSIT + remainingCharityClaimable + remainingUserClaimable)
+        );
+
+        // Update the Accumulators
+        userAccumulatedRewards[msg.sender] = userAccumulatedRewards[user] + adjustedUserInterest - underlyingAmount;
+        charityAccumulatedRewards[msg.sender] = charityAccumulatedRewards[user] + adjustedCharityInterest;
+
+        // Transfer tokens to the caller
         UNDERLYING.safeTransfer(msg.sender, underlyingAmount);
-
-        emit CharityWithdraw(msg.sender, underlyingAmount);
     }
+
+    // TODO: Redemption function to pass in rcvTokens?
 
     /// @notice Burns rcvTokens and sends underlying tokens to the charity.
     /// @param amount The amount of rcvTokens to redeem for underlying tokens.
     function charityWithdraw(uint256 amount) external {
+        // We don't allow withdrawing 0 to prevent emitting a useless event.
+        require(amount != 0, "AMOUNT_CANNOT_BE_ZERO");
+
         // Query the vault's exchange rate.
         uint256 exchangeRate = exchangeRateCurrent();
 
@@ -195,6 +220,7 @@ contract CharityVault is ERC20, Auth {
 
         // Burn inputed rcvTokens.
         _burn(CHARITY, amount);
+        emit CharityWithdrawCV(user, underlyingAmount);
 
         // TODO: how to get user since msg.sender == charity not the user :/
         address user = 0x0;
@@ -246,8 +272,6 @@ contract CharityVault is ERC20, Auth {
 
         // Transfer tokens to the charity.
         UNDERLYING.safeTransfer(CHARITY, underlyingAmount);
-
-        emit DonationWithdraw(underlyingAmount);
     }
 
     /*///////////////////////////////////////////////////////////////
