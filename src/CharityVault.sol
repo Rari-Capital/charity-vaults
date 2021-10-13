@@ -45,6 +45,10 @@ contract CharityVault is ERC20, Auth {
     /// if the token has 18 decimals ONE_WHOLE_UNIT will equal 10**18.
     uint256 public immutable BASE_UNIT;
 
+    uint256 pricePerShareAtLastExtraction;
+    uint256 rvTokensEarnedByCharity;
+    uint256 rvTokensClaimedByCharity;
+
     /// @notice Creates a new charity vault based on an underlying token.
     /// @param _UNDERLYING An underlying ERC20 compliant token.
     /// @param _CHARITY The address of the charity
@@ -109,11 +113,6 @@ contract CharityVault is ERC20, Auth {
     /// @param amount The amount of ether transferred
     event TransparentTransfer(address indexed sender, uint256 amount);
 
-    /// @notice Emitted when we receive an unknown function call
-    /// @param sender The function caller
-    /// @param amount The amount of ether paid in the call
-    event TransparentCall(address indexed sender, uint256 amount);
-
 
     /*///////////////////////////////////////////////////////////////
                          DEPOSIT/WITHDRAWAL LOGIC
@@ -125,214 +124,62 @@ contract CharityVault is ERC20, Auth {
         // We don't allow depositing 0 to prevent emitting a useless event.
         require(underlyingAmount != 0, "AMOUNT_CANNOT_BE_ZERO");
 
-        // Determine the equivalent amount of rcvTokens and mint them.
-        _mint(msg.sender, underlyingAmount.fdiv(exchangeRate(), BASE_UNIT));
-        emit DepositCV(msg.sender, underlyingAmount);
+        // Extract interest to charity
+        extractInterestToCharity();
 
-        // Deposit to the VAULT
-        VAULT.deposit(underlyingAmount);
+        // Determine the equivalent amount of rvTokens that will be minted to this charity vault.
+        uint256 rvTokensToMint = underlyingAmount.fdiv(VAULT.exchangeRate(), BASE_UNIT);
+        _mint(msg.sender, rvTokensToMint.fdiv(rcvRvExchangeRateAtLastExtraction(), BASE_UNIT));
+        emit DepositCV(msg.sender, underlyingAmount);
 
         // Transfer in UNDERLYING tokens from the sender to the vault
         UNDERLYING.safeTransferFrom(msg.sender, address(this), underlyingAmount);
+
+        // Deposit to the VAULT
+        VAULT.deposit(underlyingAmount);
     }
 
-    /// @notice Burns rcvTokens and sends underlying tokens to the caller.
-    /// @param underlyingAmount The amount of underlying tokens to withdraw
-    function withdraw(uint256 underlyingAmount) external {
-        // We don't allow withdrawing 0 to prevent emitting a useless event.
-        require(underlyingAmount != 0, "AMOUNT_CANNOT_BE_ZERO");
-
-        // Query the vault's exchange rate.
-        uint256 exchangeRate = exchangeRateCurrent();
-
-        // Convert the amount of rcvTokens to underlying tokens.
-        // This can be done by multiplying the rcvTokens by the exchange rate.
-        uint256 underlyingAmount = ((exchangeRate * amount) / 10**decimals) * (BASE_FEE / 100.0);
-
-        // Burn inputed rcvTokens.
-        _burn(msg.sender, amount);
-        emit WithdrawCV(msg.sender, underlyingAmount);
-
-        // Get the user's underlying balance
-        // TODO: can remove if we can directly just get the user's earned interest from below
-        uint256 user_balance = VAULT.balanceOfUnderlying(msg.sender);
-
-        // TODO: get their earned interest
-        uint256 userEarnedInterest = 0;
-
-        // Calculate earned interest less withdrawals
-        uint256 remainingInterest = userEarnedInterest - underlyingAmount;
-
-        // Calulate adjusted interest less accumulators
-        uint256 adjustedInterest = userEarnedInterest - (
-            charityAccumulatedRewards[msg.sender] +
-            userAccumulatedRewards[msg.sender]
-        );
-
-        // Calculate adjusted charity and user interest (less withdrawals)
-        uint256 adjustedCharityInterest = adjustedBaseFee[msg.sender] * adjustedInterest;
-        uint256 adjustedUserInterest = (1 - adjustedBaseFee[msg.sender]) * adjustedInterest;
-
-        // Calculate the claimable underlying for the user
-        uint256 userClaimableUnderlying = userAccumulatedRewards[msg.sender] + adjustedInterest * (1 - adjustedBaseFee[msg.sender]);
-
-        // Verify there is enough underlying available for user to withdraw/claim
-        require(
-            underlyingAmount < userClaimableUnderlying,
-            "Request withdrawal amount exceeds claimable interest!"
-        );
-
-        // Remaining user claimable after withdrawal
-        uint256 remainingUserClaimable = userClaimableUnderlying - underlyingAmount;
-
-        // Remaining charity claimable
-        uint256 remainingCharityClaimable = charityAccumulatedRewards[msg.sender] + adjustedInterest * adjustedBaseFee[msg.sender];
-
-        // Update the Fee Percents
-        adjustedBaseFee[msg.sender] = BASE_FEE * (
-            (ORIGINAL_DEPOSIT + remainingCharityClaimable) 
-            /
-            (ORIGINAL_DEPOSIT + remainingCharityClaimable + remainingUserClaimable)
-        );
-
-        // Update the Accumulators
-        userAccumulatedRewards[msg.sender] = userAccumulatedRewards[user] + adjustedUserInterest - underlyingAmount;
-        charityAccumulatedRewards[msg.sender] = charityAccumulatedRewards[user] + adjustedCharityInterest;
-
-        // Transfer tokens to the caller
-        UNDERLYING.safeTransfer(msg.sender, underlyingAmount);
+    // Returns the total holdings of rvTokens at the time of the last extraction.
+    function rvTokensOwnedByUsersAtLastExtraction() internal view returns (uint256) {
+        return (VAULT.balanceOf(address(this)) - (rvTokensEarnedByCharity - rvTokensClaimedByCharity));
     }
 
-    // TODO: Redemption function to pass in rcvTokens?
-
-    /// @notice Burns rcvTokens and sends underlying tokens to the charity.
-    /// @param amount The amount of rcvTokens to redeem for underlying tokens.
-    function charityWithdraw(uint256 amount) external {
-        // We don't allow withdrawing 0 to prevent emitting a useless event.
-        require(amount != 0, "AMOUNT_CANNOT_BE_ZERO");
-
-        // Query the vault's exchange rate.
-        uint256 exchangeRate = exchangeRateCurrent();
-
-        // Convert the amount of rcvTokens to underlying tokens.
-        // This can be done by multiplying the rcvTokens by the exchange rate.
-        uint256 underlyingAmount = ((exchangeRate * amount) / 10**decimals) * (BASE_FEE / 100.0);
-
-        // Burn inputed rcvTokens.
-        _burn(CHARITY, amount);
-        emit CharityWithdrawCV(user, underlyingAmount);
-
-        // TODO: how to get user since msg.sender == charity not the user :/
-        address user = 0x0;
-
-        // Get the user's underlying balance
-        uint256 user_balance = VAULT.balanceOfUnderlying(user);
-
-        // TODO: get their earned interest
-        uint256 userEarnedInterest = 0;
-
-        // Calculate earned interest less withdrawals
-        uint256 remainingInterest = userEarnedInterest - underlyingAmount;
-
-        // Calulate adjusted interest less accumulators
-        uint256 adjustedInterest = userEarnedInterest - (
-            charityAccumulatedRewards[user] +
-            userAccumulatedRewards[user]
-        );
-
-        // Calculate adjusted charity and user interest (less withdrawals)
-        uint256 adjustedCharityInterest = adjustedBaseFee[user] * adjustedInterest;
-        uint256 adjustedUserInterest = (1 - adjustedBaseFee[user]) * adjustedInterest;
-
-        // Calculate the claimable underlying for the charity
-        uint256 charityClaimableUnderlying = charityAccumulatedRewards[user] + adjustedInterest * adjustedBaseFee[user];
-
-        // Verify there is enough underlying available for charity to withdraw/claim
-        require(
-            underlyingAmount < charityClaimableUnderlying,
-            "Request withdrawal amount exceeds claimable interest!"
-        );
-
-        // Remaining charity claimable after withdrawal
-        uint256 remainingCharityClaimable = charityClaimableUnderlying - underlyingAmount;
-
-        // Remaining user claimable
-        uint256 remainingUserClaimable = userAccumulatedRewards[user] + adjustedInterest * (1 - adjustedBaseFee[user]);
-
-        // Update the Fee Percents
-        adjustedBaseFee[user] = BASE_FEE * (
-            (ORIGINAL_DEPOSIT + remainingCharityClaimable) 
-            /
-            (ORIGINAL_DEPOSIT + remainingCharityClaimable + remainingUserClaimable)
-        );
-
-        // Update the Accumulators
-        userAccumulatedRewards[user] = userAccumulatedRewards[user] + adjustedUserInterest;
-        charityAccumulatedRewards[user] = charityAccumulatedRewards[user] + adjustedCharityInterest - underlyingAmount;
-
-        // Transfer tokens to the charity.
-        UNDERLYING.safeTransfer(CHARITY, underlyingAmount);
+    /// @dev Extracts and withdraws unclaimed interest earned by charity.
+    function withdrawInterestToCharity() external {
+        extractInterestToCharity();
+        uint256 rvTokensToClaim = rvTokensEarnedByCharity - rvTokensClaimedByCharity;
+        rvTokensClaimedByCharity = rvTokensEarnedByCharity;
+        VAULT.transfer(CHARITY, rvTokensToClaim);
     }
-
-    /*///////////////////////////////////////////////////////////////
-                        CHARITY ACCOUNTING LOGIC
-    //////////////////////////////////////////////////////////////*/
-
-    /// @dev User accumulated rewards on withdrawals
-    /// @dev Maps a user deposit address to the accumulated user rewards up to a given withdrawal
-    mapping(address => uint256) userAccumulatedRewards;
-
-    /// @notice Charity accumulated rewards on withdrawals
-    /// @dev Maps a user deposit address to the accumulated charity rewards up to a given withdrawal
-    mapping(address => uint256) charityAccumulatedRewards;
-
-    /// @notice The adjusted base fee percent to be sent to a user
-    /// @dev Maps a user to the adjusted base fee percent
-    mapping(address => uint256) adjustedBaseFee;
 
     /*///////////////////////////////////////////////////////////////
                         VAULT ACCOUNTING LOGIC
     //////////////////////////////////////////////////////////////*/
 
-    /// @notice Returns a user's Vault balance in underlying tokens.
-    /// @return The user's Vault balance in underlying tokens.
-    function balanceOfUnderlying(address account) external view returns (uint256) {
-        return balanceOf[account].fmul(exchangeRate(), BASE_UNIT);
+    /// @dev Do this before user deposits, user withdrawals, and charity withdrawals.
+    function extractInterestToCharity() internal {
+        uint256 pricePerShareNow = VAULT.exchangeRate();
+
+        if (pricePerShareAtLastExtraction == 0) {
+            pricePerShareAtLastExtraction = pricePerShareNow;
+            return;
+        }
+
+        uint256 underlyingEarnedByUsersSinceLastExtraction = (VAULT.balanceOf(address(this)) - (rvTokensEarnedByCharity - rvTokensClaimedByCharity)) * (pricePerShareNow - pricePerShareAtLastExtraction);
+        uint256 underlyingToCharity = underlyingEarnedByUsersSinceLastExtraction * BASE_FEE / 100;
+        uint256 rvTokensToCharity = underlyingToCharity.fdiv(pricePerShareNow, VAULT.BASE_UNIT());
+        pricePerShareAtLastExtraction = pricePerShareNow;
+        rvTokensEarnedByCharity += rvTokensToCharity;
     }
 
-    /// @notice Returns the amount of underlying tokens an rvToken can be redeemed for.
-    /// @return The amount of underlying tokens an rvToken can be redeemed for.
-    function exchangeRate() public view returns (uint256) {
+    // Returns the exchange rate of rcvTokens in terms of rvTokens since the last extraction.
+    function rcvRvExchangeRateAtLastExtraction() internal view returns (uint256) {
         // If there are no rvTokens in circulation, return an exchange rate of 1:1.
         if (totalSupply == 0) return BASE_UNIT;
 
         // TODO: Optimize double SLOAD of totalSupply here?
         // Calculate the exchange rate by diving the total holdings by the rvToken supply.
-        return totalHoldings().fdiv(totalSupply, BASE_UNIT);
-    }
-
-    /// @notice Calculate the total amount of tokens the Vault currently holds for depositors.
-    /// @return The total amount of tokens the Vault currently holds for depositors.
-    function totalHoldings() public view returns (uint256) {
-        // Subtract locked profit from the amount of total deposited tokens and add the float value.
-        // We subtract locked profit from totalStrategyHoldings because maxLockedProfit is baked into it.
-        return totalFloat() + (totalStrategyHoldings - lockedProfit());
-    }
-
-    /// @notice Calculate the current amount of locked profit.
-    /// @return The current amount of locked profit.
-    function lockedProfit() public view returns (uint256) {
-        // TODO: Cache SLOADs?
-        return
-            block.timestamp >= lastHarvest + profitUnlockDelay
-                ? 0 // If profit unlock delay has passed, there is no locked profit.
-                : maxLockedProfit - (maxLockedProfit * (block.timestamp - lastHarvest)) / profitUnlockDelay;
-    }
-
-    /// @notice Returns the amount of underlying tokens that idly sit in the Vault.
-    /// @return The amount of underlying tokens that sit idly in the Vault.
-    function totalFloat() public view returns (uint256) {
-        return UNDERLYING.balanceOf(address(this));
+        return rvTokensOwnedByUsersAtLastExtraction().fdiv(totalSupply, BASE_UNIT);
     }
 
     /*///////////////////////////////////////////////////////////////
