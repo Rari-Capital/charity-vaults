@@ -190,7 +190,7 @@ contract CharityVault is ERC20, Auth {
 
     /// @notice Erroneous ether sent will be forward to the charity as a donation
     receive() external payable {
-        (bool sent, bytes memory _data) = CHARITY.call{value: msg.value}("");
+        (bool sent, ) = CHARITY.call{value: msg.value}("");
         require(sent, "Failed to send to CHARITY");
 
         // If sent, emit logging event

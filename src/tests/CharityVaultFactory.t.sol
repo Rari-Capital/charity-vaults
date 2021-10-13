@@ -29,7 +29,7 @@ contract CharityVaultFactoryTest is DSTestPlus {
         Vault vault = vaultFactory.deployVault(_underlying);
         assertVaultEq(vaultFactory.getVaultFromUnderlying(_underlying), vault);
         assertTrue(vaultFactory.isVaultDeployed(vault));
-        assertERC20Eq(vault.underlying(), _underlying);
+        assertERC20Eq(vault.UNDERLYING(), _underlying);
     }
 
     /// @dev Helper function to refactor deploying a cvault from the cvault factory
@@ -42,7 +42,7 @@ contract CharityVaultFactoryTest is DSTestPlus {
 
         // Ensure the CharityVault is actually deployed
         assertTrue(factory.isCharityVaultDeployed(cvault));
-        assertERC20Eq(cvault.underlying(), _underlying);
+        assertERC20Eq(cvault.UNDERLYING(), _underlying);
         //   assertCharityVaultEq(factory.getCharityVaultFromUnderlying(_underlying, payable(_address), _feePercent), cvault);
     }
 

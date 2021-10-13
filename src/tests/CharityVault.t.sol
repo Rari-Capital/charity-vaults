@@ -3,30 +3,56 @@ pragma solidity ^0.8.6;
 
 import {MockERC20} from "solmate/test/utils/MockERC20.sol";
 
-import {DSTestPlus} from "./utils/DSTestPlus.sol";
-import {CharityVault} from "../CharityVault.sol";
 import {Vault} from 'vaults/Vault.sol';
+import {VaultFactory} from 'vaults/VaultFactory.sol';
+import {MockStrategy} from 'vaults/test/mocks/MockStrategy.sol';
+import {DSTestPlus} from "vaults/test/utils/DSTestPlus.sol";
+
+import {CharityVault} from "../CharityVault.sol";
+import {CharityVaultFactory} from "../CharityVaultFactory.sol";
 
 contract CharityVaultTest is DSTestPlus {
-    Vault vault;
-    CharityVault cvault;
     MockERC20 underlying;
+    
+    /// @dev Vault Logic
+    Vault vault;
+    VaultFactory vaultFactory;
+    MockStrategy strategy1;
+    MockStrategy strategy2;
+
+    /// @dev CharityVault Logic
+    CharityVault cvault;
+    CharityVaultFactory cvaultFactory;
     address payable immutable caddress = payable(address(0));
     uint256 immutable cfeePercent = 10;
     uint256 nonce = 1;
 
     function setUp() public {
         underlying = new MockERC20("Mock Token", "TKN", 18);
-        vault = new Vault(underlying);
-        vault.setFeeClaimer(address(1));
-        cvault = new CharityVault(underlying, caddress, cfeePercent, vault);
+        vaultFactory = new VaultFactory();
+        vault = vaultFactory.deployVault(underlying);
+
+        strategy1 = new MockStrategy(underlying);
+        strategy2 = new MockStrategy(underlying);
+
+        cvaultFactory = new CharityVaultFactory(address(vaultFactory));
+        cvault = cvaultFactory.deployCharityVault(underlying, caddress, cfeePercent);
+    }
+
+    /// @dev Constructing a lone CharityVault should fail from the Auth modifier in the CharityVault Constructor
+    function testFail_construct_lone_cv() public {
+        MockERC20 _underlying = new MockERC20("Fail Mock Token", "FAIL", 18);
+        Vault _vault = new VaultFactory().deployVault(_underlying);
+
+        // this should fail
+        new CharityVault(_underlying, caddress, cfeePercent, _vault);
     }
 
     /// @notice Tests to make sure the deployed ERC20 metadata is correct
     function test_properly_init_erc20() public {
-        assertERC20Eq(cvault.underlying(), underlying);
-        assertEq(cvault.name(), string(abi.encodePacked("Fuse ", underlying.name(), " Charity Vault")));
-        assertEq(cvault.symbol(), string(abi.encodePacked("fcv", underlying.symbol())));
+        assertERC20Eq(cvault.UNDERLYING(), underlying);
+        assertEq(cvault.name(), string(abi.encodePacked("Rari ", underlying.name(), " Charity Vault")));
+        assertEq(cvault.symbol(), string(abi.encodePacked("rcv", underlying.symbol())));
     }
 
     /// @notice Tests if we can deploy a charity vault with valid fuzzed parameters
@@ -37,13 +63,13 @@ contract CharityVaultTest is DSTestPlus {
             nonce++;
         }
 
-        CharityVault newVault = new CharityVault(underlying, _address, validatedFeePercent, vault);
+        CharityVault newVault = cvaultFactory.deployCharityVault(underlying, _address, validatedFeePercent);
         
         // Assert our CharityVault parameters are equal
         assertTrue(address(newVault).code.length > 0);
-        assertEq(_address, newVault.charity());
-        assertEq(validatedFeePercent, newVault.feePercent());
-        assertERC20Eq(newVault.underlying(), underlying);
+        assertEq(_address, newVault.CHARITY());
+        assertEq(validatedFeePercent, newVault.BASE_FEE());
+        assertERC20Eq(newVault.UNDERLYING(), underlying);
     }
 
     /// @notice Tests if deployment fails for invalid parameters
@@ -54,7 +80,8 @@ contract CharityVaultTest is DSTestPlus {
             nonce++;
         }
 
-        CharityVault _newVault = new CharityVault(underlying, _address, validatedFeePercent, vault);
+        // this should fail
+        cvaultFactory.deployCharityVault(underlying, _address, validatedFeePercent);
     }
 
     // function test_charity_vault_deposit_functions_properly(uint256 amount) public {
