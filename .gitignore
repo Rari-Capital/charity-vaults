@@ -2,3 +2,7 @@
 /node_modules
 
 *.log
+
+# IGNORE ENVIRONMENT VARIABLES
+.env
+.env.prod

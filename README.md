@@ -1,6 +1,8 @@
-# Charity Vaults
+# <h1 align="center"> Charity Vaults </h1>
 
 Share interest from Fuse Vaults with charities, friends, and more.
+
+![Github Actions](https://github.com/Rari-Capital/charity-vaults/workflows/Tests/badge.svg)
 
 ### Getting Started
 
@@ -8,7 +10,14 @@ Share interest from Fuse Vaults with charities, friends, and more.
 git clone https://github.com/Rari-Capital/charity-vaults.git
 cd charity-vaults
 make
+make test
 ```
+
+
+### Credits
+
+- [t11s](https://twitter.com/transmissions11), [Jet Jadeja](https://twitter.com/JetJadeja), and [David Lucid](https://twitter.com/davidlucid) for the exceptional guidance.
+- [Georgios Konstantopoulos](https://github.com/gakonst) for the amazing [dapptools-template](https://github.com/gakonst/dapptools-template) resource.
 
 
 ### Generate Pretty Visuals
@@ -24,6 +33,119 @@ Run `surya graph -s src/CharityVault.sol | dot -Tpng > assets/CharityVault.png`
 #### CharityVaultFactory.sol
 
 Run `surya graph -s src/CharityVaultFactory.sol | dot -Tpng > assets/CharityVaultFactory.png`
+
+
+## Deploying
+
+Contracts can be deployed via the `make deploy` command. Addresses are automatically
+written in a name-address json file stored under `out/addresses.json`.
+
+We recommend testing your deployments and provide an example under [`scripts/test-deploy.sh`](./scripts/test-deploy.sh)
+which will launch a local testnet, deploy the contracts, and do some sanity checks.
+
+Environment variables under the `.env` file are automatically loaded (see [`.env.example`](./.env.example)).
+Be careful of the [precedence in which env vars are read](https://github.com/dapphub/dapptools/tree/2cf441052489625f8635bc69eb4842f0124f08e4/src/dapp#precedence).
+
+We assume `ETH_FROM` is an address you own and is part of your keystore.
+If not, use `ethsign import` to import your private key.
+
+See the [`Makefile`](./Makefile#25) for more context on how this works under the hood
+
+We use Alchemy as a remote node provider for the Mainnet & Rinkeby network deployments.
+You must have set your API key as the `ALCHEMY_API_KEY` enviroment variable in order to
+deploy to these networks
+
+### Mainnet
+
+```
+ETH_FROM=0x3538b6eF447f244268BCb2A0E1796fEE7c45002D make deploy-mainnet
+```
+
+### Rinkeby
+
+```
+ETH_FROM=0x3538b6eF447f244268BCb2A0E1796fEE7c45002D make deploy-rinkeby
+```
+
+### Custom Network
+
+```
+ETH_RPC_URL=<your network> make deploy
+```
+
+### Local Testnet
+
+```
+# on one terminal
+dapp testnet
+# get the printed account address from the testnet, and set it as ETH_FROM. Then:
+make deploy
+```
+
+### Verifying on Etherscan
+
+After deploying your contract you can verify it on Etherscan using:
+
+```
+ETHERSCAN_API_KEY=<api-key> contract_address=<address> network_name=<mainnet|rinkeby|...> make verify
+```
+
+Check out the [dapp documentation](https://github.com/dapphub/dapptools/tree/master/src/dapp#dapp-verify-contract) to see how
+verifying contracts work with DappTools.
+
+### Testnet Deployement
+
+
+⚠️ ⚠️ ⚠️ Requirements ⚠️ ⚠️ ⚠️
+```md
+Using the `--verify` flag requires an
+`ETHERSCAN_API_KEY` environment variable
+which can be set in a `.env` file with:
+`ETHERSCAN_API_KEY=<API_KEY>`.
+```
+
+To deploy to a testnet, we need to first deploy the [vaults](https://github.com/Rari-Capital/vaults) contracts.
+
+- First, the VaultFactory contract: `dapp create lib/vaults/src/VaultFactory --verify`
+- Next, the Vault contract: `dapp create lib/vaults/src/Vault --verify`
+
+Now, we can move on to deploying our CharityVaults.
+
+- Deploy the CharityVaultFactory contract: `dapp create CharityVaultFactory --verify`
+- Deploy the CharityVault contract: `dapp create CharityVault --verify`
+
+
+## Installing the toolkit
+
+If you do not have DappTools already installed, you'll need to run the below
+commands
+
+### Install Nix
+
+```sh
+# User must be in sudoers
+curl -L https://nixos.org/nix/install | sh
+
+# Run this or login again to use Nix
+. "$HOME/.nix-profile/etc/profile.d/nix.sh"
+```
+
+### Install DappTools
+
+```sh
+curl https://dapp.tools/install | sh
+```
+
+## DappTools Resources
+
+* [DappTools](https://dapp.tools)
+    * [Hevm Docs](https://github.com/dapphub/dapptools/blob/master/src/hevm/README.md)
+    * [Dapp Docs](https://github.com/dapphub/dapptools/tree/master/src/dapp/README.md)
+    * [Seth Docs](https://github.com/dapphub/dapptools/tree/master/src/seth/README.md)
+* [DappTools Overview](https://www.youtube.com/watch?v=lPinWgaNceM)
+* [Awesome-DappTools](https://github.com/rajivpo/awesome-dapptools)
+
+
 
 ### FAQS
 
