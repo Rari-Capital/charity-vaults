@@ -94,8 +94,11 @@ saveContract() {
 }
 
 estimate_gas() {
+  echo "In estimate_gas function..."
 	NAME=$1
+  echo "Got name $1"
 	ARGS=${@:2}
+  echo "Got args=$ARGS"
 	# select the filename and the contract in it
 	PATTERN=".contracts[\"src/$NAME.sol\"].$NAME"
 

@@ -67,6 +67,34 @@ ETH_FROM=0x3538b6eF447f244268BCb2A0E1796fEE7c45002D make deploy-mainnet
 ETH_FROM=0x3538b6eF447f244268BCb2A0E1796fEE7c45002D make deploy-rinkeby
 ```
 
+### Goerli
+
+#### Pre-deploys
+
+VaultFactory was deployed to `0x8b5842a935731ed1b92e3211a7f38bebd185eb53` on [Goerli](https://goerli.etherscan.io/address/0x8b5842a935731ed1b92e3211a7f38bebd185eb53) using the following command in the [vaults](./lib/vaults) subdir:
+
+```
+ETH_FROM=xxxx ETH_RPC_URL=xxxx ETH_GAS=xxxx dapp create VaultFactory --verify
+```
+
+A Vault for [Goerli USDC](https://goerli.etherscan.io/token/0x5ffbac75efc9547fbc822166fed19b05cd5890bb) (`0x5ffbac75efc9547fbc822166fed19b05cd5890bb`) Vault was deployed to `0x256Df578846117A15106F1F0e99155afF5E76d66` using the `deployVault` permissionless function in the `VaultFactory` on [Goerli Etherscan](https://goerli.etherscan.io/address/0x256Df578846117A15106F1F0e99155afF5E76d66).
+
+<!-- Can't verify cuz owner is the VaultFactory :/ -->
+
+<!--
+Since we can't pass the `--verify` flag, we have to verify the Vault contract using dapptools `verify-contract` command as such:
+
+```
+ETH_FROM=xxxx ETH_RPC_URL=xxxx ETH_GAS=xxxx dapp verify-contract src/Vault.sol:Vault 0x256Df578846117A15106F1F0e99155afF5E76d66
+```
+-->
+
+#### Execute
+
+```
+ETH_FROM=0xf25e32C0f2928F198912A4F21008aF146Af8A05a make deploy-goerli
+```
+
 ### Custom Network
 
 ```
@@ -92,28 +120,6 @@ ETHERSCAN_API_KEY=<api-key> contract_address=<address> network_name=<mainnet|rin
 
 Check out the [dapp documentation](https://github.com/dapphub/dapptools/tree/master/src/dapp#dapp-verify-contract) to see how
 verifying contracts work with DappTools.
-
-### Testnet Deployement
-
-
-⚠️ ⚠️ ⚠️ Requirements ⚠️ ⚠️ ⚠️
-```md
-Using the `--verify` flag requires an
-`ETHERSCAN_API_KEY` environment variable
-which can be set in a `.env` file with:
-`ETHERSCAN_API_KEY=<API_KEY>`.
-```
-
-To deploy to a testnet, we need to first deploy the [vaults](https://github.com/Rari-Capital/vaults) contracts.
-
-- First, the VaultFactory contract: `dapp create lib/vaults/src/VaultFactory --verify`
-- Next, the Vault contract: `dapp create lib/vaults/src/Vault --verify`
-
-Now, we can move on to deploying our CharityVaults.
-
-- Deploy the CharityVaultFactory contract: `dapp create CharityVaultFactory --verify`
-- Deploy the CharityVault contract: `dapp create CharityVault --verify`
-
 
 ## Installing the toolkit
 

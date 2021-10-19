@@ -14,7 +14,7 @@ npm:; yarn install
 
 # install solc version
 # example to install other versions: `make solc 0_8_2`
-SOLC_VERSION := 0_8_7
+SOLC_VERSION := 0_8_6
 solc:; nix-env -f https://github.com/dapphub/dapptools/archive/master.tar.gz -iA solc-static-versions.solc_${SOLC_VERSION}
 
 # Build & test
@@ -36,8 +36,12 @@ deploy-mainnet: check-api-key deploy
 deploy-rinkeby: export ETH_RPC_URL = $(call network,rinkeby)
 deploy-rinkeby: check-api-key deploy
 
+# goerli
+deploy-goerli: export ETH_RPC_URL = $(call network,goerli)
+deploy-goerli: check-api-key deploy
+
 # verify on Etherscan
-verify:; ETH_RPC_URL=$(call network,$(network_name)) dapp verify-contract src/Greeter.sol:Greeter $(contract_address)
+verify:; ETH_RPC_URL=$(call network,$(network_name)) dapp verify-contract src/CharityVaultFactory.sol:CharityVaultFactory $(contract_address)
 
 check-api-key:
 ifndef ALCHEMY_API_KEY
