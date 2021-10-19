@@ -79,15 +79,13 @@ ETH_FROM=xxxx ETH_RPC_URL=xxxx ETH_GAS=xxxx dapp create VaultFactory --verify
 
 A Vault for [Goerli USDC](https://goerli.etherscan.io/token/0x5ffbac75efc9547fbc822166fed19b05cd5890bb) (`0x5ffbac75efc9547fbc822166fed19b05cd5890bb`) Vault was deployed to `0x256Df578846117A15106F1F0e99155afF5E76d66` using the `deployVault` permissionless function in the `VaultFactory` on [Goerli Etherscan](https://goerli.etherscan.io/address/0x256Df578846117A15106F1F0e99155afF5E76d66).
 
-<!-- Can't verify cuz owner is the VaultFactory :/ -->
 
-<!--
-Since we can't pass the `--verify` flag, we have to verify the Vault contract using dapptools `verify-contract` command as such:
+Since we can't pass the `--verify` flag, we have to verify the Vault contract using dapptools `verify-contract` command as such.
 
 ```
-ETH_FROM=xxxx ETH_RPC_URL=xxxx ETH_GAS=xxxx dapp verify-contract src/Vault.sol:Vault 0x256Df578846117A15106F1F0e99155afF5E76d66
+ETH_FROM=xxxx ETH_RPC_URL=xxxx ETH_GAS=xxxx dapp verify-contract src/Vault.sol:Vault 0x256Df578846117A15106F1F0e99155afF5E76d66 0x5ffbac75efc9547fbc822166fed19b05cd5890bb
 ```
--->
+NOTE: we have to pass in the address of USDC (0x5ffbac75efc9547fbc822166fed19b05cd5890bb) since it is an argument in the Vault constructor
 
 #### Execute
 
