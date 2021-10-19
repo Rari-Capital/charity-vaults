@@ -181,19 +181,4 @@ contract CharityVault is ERC20, Auth {
         // Calculate the exchange rate by diving the total holdings by the rvToken supply.
         return rvTokensOwnedByUsersAtLastExtraction().fdiv(totalSupply, BASE_UNIT);
     }
-
-    /*///////////////////////////////////////////////////////////////
-                        TRANSPARENT FALLBACK FUNCTIONALITY
-    //////////////////////////////////////////////////////////////*/
-
-    // TODO: remove?
-
-    /// @notice Erroneous ether sent will be forward to the charity as a donation
-    receive() external payable {
-        (bool sent, ) = CHARITY.call{value: msg.value}("");
-        require(sent, "Failed to send to CHARITY");
-
-        // If sent, emit logging event
-        emit TransparentTransfer(msg.sender, msg.value);
-    }
 }

@@ -171,46 +171,22 @@ A:
 A: Yes, Endaoment confirmed they will be able to take any donations.
 ```
 
-*The below questions refer to how the ui links the charities*
-*Like we were thinking, the charities/referrals would be a json list with referral/charity_id to gift_address that can be pr'd into the repo like tokenlists*
-*Then all deposits on the ui will pass in the gift address*
 
-*If we want, we can have charities be tracked onchain*
+### Erroneous
 
-4. Is anybody able to be a charity - like is adding a charity permissionless?
-(from the project description it sounds like it can be anyone)
+Transparent fallback functionality was ripped from the CharityVault and CharityVaultFactory to avoid any potential future exploits as well as saving gas on contract deployment.
+
 ```
-A:
-```
+/*///////////////////////////////////////////////////////////////
+                    TRANSPARENT FALLBACK FUNCTIONALITY
+//////////////////////////////////////////////////////////////*/
 
-5. Should referrals have the gift rate optionally set by the charity or it should always be up to the user depositing?
-(We _could_ always just not have the ui for the charity to set the rate for a given referral and always allow the user to pass in a gift rate and we verify that the charity didn't already set the rate manually and in that case revert the deposit tx)
-```
-A:
-```
+/// @notice Erroneous ether sent will be forward to the charity as a donation
+receive() external payable {
+    (bool sent, ) = CHARITY.call{value: msg.value}("");
+    require(sent, "Failed to send to CHARITY");
 
-6. *If* the charity is able to set the gift rate, are they able to change the rate for a given referral?
-```
-A:
-```
-
-7. *If* the charity is able to set the gift rate, is anybody able to create a referral link for that charity with a given rate? On the other hand if the charity isn't able to set the gift rate, is a referral link automatically generated for a given charity when a charity is added to the CharityVaults contract?
-(from the project description it sounds like it can be anyone)
-```
-A:
-```
-
-8. On withdrawal, it doesn't look like we are able to control where the vault.withdraw function sends the funds?
-```
-A:
-
-
-9. Is there a benefit to storing the Charity data (name, "verified" status) on-chain?
-
-A:
-
-
-10. Should we aim to make the charity vault ownership transferable? Or is maintaining ownership per-address acceptable?
-
-A:
+    // If sent, emit logging event
+    emit TransparentTransfer(msg.sender, msg.value);
+}
 ```
