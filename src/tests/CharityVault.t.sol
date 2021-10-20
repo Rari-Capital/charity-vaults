@@ -3,9 +3,9 @@ pragma solidity ^0.8.6;
 
 import {MockERC20} from "solmate/test/utils/MockERC20.sol";
 
-import {Vault} from 'vaults/Vault.sol';
-import {VaultFactory} from 'vaults/VaultFactory.sol';
-import {MockStrategy} from 'vaults/test/mocks/MockStrategy.sol';
+import {Vault} from "vaults/Vault.sol";
+import {VaultFactory} from "vaults/VaultFactory.sol";
+import {MockStrategy} from "vaults/test/mocks/MockStrategy.sol";
 import {DSTestPlus} from "vaults/test/utils/DSTestPlus.sol";
 
 import {CharityVault} from "../CharityVault.sol";
@@ -13,7 +13,7 @@ import {CharityVaultFactory} from "../CharityVaultFactory.sol";
 
 contract CharityVaultTest is DSTestPlus {
     MockERC20 underlying;
-    
+
     /// @dev Vault Logic
     Vault vault;
     VaultFactory vaultFactory;
@@ -36,7 +36,11 @@ contract CharityVaultTest is DSTestPlus {
         strategy2 = new MockStrategy(underlying);
 
         cvaultFactory = new CharityVaultFactory(address(vaultFactory));
-        cvault = cvaultFactory.deployCharityVault(underlying, caddress, cfeePercent);
+        cvault = cvaultFactory.deployCharityVault(
+            underlying,
+            caddress,
+            cfeePercent
+        );
     }
 
     /// @dev Constructing a lone CharityVault should fail from the Auth modifier in the CharityVault Constructor
@@ -51,20 +55,41 @@ contract CharityVaultTest is DSTestPlus {
     /// @notice Tests to make sure the deployed ERC20 metadata is correct
     function test_properly_init_erc20() public {
         assertERC20Eq(cvault.UNDERLYING(), underlying);
-        assertEq(cvault.name(), string(abi.encodePacked("Rari ", underlying.name(), " Charity Vault")));
-        assertEq(cvault.symbol(), string(abi.encodePacked("rcv", underlying.symbol())));
+        assertEq(
+            cvault.name(),
+            string(
+                abi.encodePacked("Rari ", underlying.name(), " Charity Vault")
+            )
+        );
+        assertEq(
+            cvault.symbol(),
+            string(abi.encodePacked("rcv", underlying.symbol()))
+        );
     }
 
     /// @notice Tests if we can deploy a charity vault with valid fuzzed parameters
-    function test_deploy_charity_vault(address payable _address, uint256 _feePercent) public {
+    function test_deploy_charity_vault(
+        address payable _address,
+        uint256 _feePercent
+    ) public {
         uint256 validatedFeePercent = _feePercent;
-        if(_feePercent > 100 || _feePercent < 0) {
-            validatedFeePercent = uint256(keccak256(abi.encodePacked(block.timestamp, msg.sender, nonce))) % 100;
+        if (_feePercent > 100 || _feePercent < 0) {
+            validatedFeePercent =
+                uint256(
+                    keccak256(
+                        abi.encodePacked(block.timestamp, msg.sender, nonce)
+                    )
+                ) %
+                100;
             nonce++;
         }
 
-        CharityVault newVault = cvaultFactory.deployCharityVault(underlying, _address, validatedFeePercent);
-        
+        CharityVault newVault = cvaultFactory.deployCharityVault(
+            underlying,
+            _address,
+            validatedFeePercent
+        );
+
         // Assert our CharityVault parameters are equal
         assertTrue(address(newVault).code.length > 0);
         assertEq(_address, newVault.CHARITY());
@@ -73,15 +98,28 @@ contract CharityVaultTest is DSTestPlus {
     }
 
     /// @notice Tests if deployment fails for invalid parameters
-    function testFail_deploy_charity_vault(address payable _address, uint256 _feePercent) public {
+    function testFail_deploy_charity_vault(
+        address payable _address,
+        uint256 _feePercent
+    ) public {
         uint256 validatedFeePercent = _feePercent;
-        if(_feePercent <= 100 || _feePercent >= 0) {
-            validatedFeePercent = uint256(keccak256(abi.encodePacked(block.timestamp, msg.sender, nonce))) + 101;
+        if (_feePercent <= 100 || _feePercent >= 0) {
+            validatedFeePercent =
+                uint256(
+                    keccak256(
+                        abi.encodePacked(block.timestamp, msg.sender, nonce)
+                    )
+                ) +
+                101;
             nonce++;
         }
 
         // this should fail
-        cvaultFactory.deployCharityVault(underlying, _address, validatedFeePercent);
+        cvaultFactory.deployCharityVault(
+            underlying,
+            _address,
+            validatedFeePercent
+        );
     }
 
     // function test_charity_vault_deposit_functions_properly(uint256 amount) public {

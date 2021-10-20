@@ -8,7 +8,6 @@ import {VaultFactory} from "vaults/VaultFactory.sol";
 
 import {CharityVault} from "./CharityVault.sol";
 
-
 /// @title Fuse Charity Vault Factory
 /// @author Transmissions11, JetJadeja, Andreas Bigger
 /// @notice Charity wrapper for vaults/VaultFactory.
@@ -21,8 +20,7 @@ contract CharityVaultFactory is Auth(msg.sender) {
 
     /// @notice Creates a new CharityVaultFactory
     /// @param _address the address of the VaultFactory
-    constructor(address _address)
-    {
+    constructor(address _address) {
         VAULT_FACTORY = VaultFactory(_address);
     }
 
@@ -45,12 +43,16 @@ contract CharityVaultFactory is Auth(msg.sender) {
     /// @param charity donation address
     /// @param feePercent percent of earned interest sent to the charity as a donation
     /// @return cvault The newly deployed CharityVault contract.
-    function deployCharityVault(ERC20 underlying, address payable charity, uint256 feePercent) external returns (CharityVault cvault) {
+    function deployCharityVault(
+        ERC20 underlying,
+        address payable charity,
+        uint256 feePercent
+    ) external returns (CharityVault cvault) {
         // Use the create2 opcode to deploy a CharityVault contract.
-        // This will revert if a vault with this underlying has already been 
+        // This will revert if a vault with this underlying has already been
         // deployed, as the salt would be the same and we can't deploy with it twice.
-        cvault = new CharityVault{
-            // Compute Inline CharityVault Salt, h/t @t11s
+        cvault = new CharityVault{// Compute Inline CharityVault Salt, h/t @t11s
+
             salt: keccak256(
                 abi.encode(
                     address(underlying).fillLast12Bytes(),
@@ -59,7 +61,12 @@ contract CharityVaultFactory is Auth(msg.sender) {
                     // address(VAULT_FACTORY.getVaultFromUnderlying(underlying))
                 )
             )
-        }(underlying, charity, feePercent, VAULT_FACTORY.getVaultFromUnderlying(underlying));
+        }(
+            underlying,
+            charity,
+            feePercent,
+            VAULT_FACTORY.getVaultFromUnderlying(underlying)
+        );
 
         emit CharityVaultDeployed(underlying, cvault);
     }
@@ -74,38 +81,49 @@ contract CharityVaultFactory is Auth(msg.sender) {
     /// @param charity donation address
     /// @param feePercent percent of earned interest sent to the charity as a donation
     /// @return The CharityVault that supports this underlying token.
-    function getCharityVaultFromUnderlying(ERC20 underlying, address payable charity, uint256 feePercent) external view returns (CharityVault) {
+    function getCharityVaultFromUnderlying(
+        ERC20 underlying,
+        address payable charity,
+        uint256 feePercent
+    ) external view returns (CharityVault) {
         // Convert the create2 hash into a CharityVault.
-        return CharityVault(payable(keccak256(
-            abi.encodePacked(
-                // Prefix:
-                bytes1(0xFF),
-                // Creator:
-                address(this),
-                // Compute Inline CharityVault Salt, h/t @t11s
-                keccak256(
-                    abi.encode(
-                        address(underlying).fillLast12Bytes(),
-                        charity,
-                        feePercent
-                    )
-                ),
-                // Bytecode hash:
-                keccak256(
-                    abi.encodePacked(
-                        // Deployment bytecode:
-                        type(CharityVault).creationCode,
-                        // Constructor arguments:
-                        abi.encode(
-                            underlying,
-                            charity,
-                            feePercent,
-                            VAULT_FACTORY.getVaultFromUnderlying(underlying)
+        return
+            CharityVault(
+                payable(
+                    keccak256(
+                        abi.encodePacked(
+                            // Prefix:
+                            bytes1(0xFF),
+                            // Creator:
+                            address(this),
+                            // Compute Inline CharityVault Salt, h/t @t11s
+                            keccak256(
+                                abi.encode(
+                                    address(underlying).fillLast12Bytes(),
+                                    charity,
+                                    feePercent
+                                )
+                            ),
+                            // Bytecode hash:
+                            keccak256(
+                                abi.encodePacked(
+                                    // Deployment bytecode:
+                                    type(CharityVault).creationCode,
+                                    // Constructor arguments:
+                                    abi.encode(
+                                        underlying,
+                                        charity,
+                                        feePercent,
+                                        VAULT_FACTORY.getVaultFromUnderlying(
+                                            underlying
+                                        )
+                                    )
+                                )
+                            )
                         )
-                    )
+                    ).fromLast20Bytes()
                 )
-            )
-        ).fromLast20Bytes()));
+            );
     }
 
     /// @notice Returns if a charity vault at an address has been deployed yet.
@@ -113,8 +131,11 @@ contract CharityVaultFactory is Auth(msg.sender) {
     /// getCharityVaultFromUnderlying, as it may return vaults that have not been deployed yet.
     /// @param cvault The address of the charity vault that may not have been deployed.
     /// @return A bool indicated whether the charity vault has been deployed already.
-    function isCharityVaultDeployed(CharityVault cvault) external view returns (bool) {
+    function isCharityVaultDeployed(CharityVault cvault)
+        external
+        view
+        returns (bool)
+    {
         return address(cvault).code.length > 0;
     }
-
 }
