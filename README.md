@@ -1,8 +1,12 @@
 # <h1 align="center"> Charity Vaults </h1>
 
 Share interest from Fuse Vaults with charities, friends, and more.
+<div align="center">
 
-![Github Actions](https://github.com/Rari-Capital/charity-vaults/workflows/Tests/badge.svg)
+![Lints](https://github.com/Rari-Capital/charity-vaults/workflows/Linting/badge.svg)
+![Tests](https://github.com/Rari-Capital/charity-vaults/workflows/Tests/badge.svg)
+
+</div>
 
 ### Getting Started
 
