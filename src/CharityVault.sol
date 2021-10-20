@@ -106,7 +106,7 @@ contract CharityVault is ERC20, Auth {
     }
 
     /*///////////////////////////////////////////////////////////////
-                                 EVENTS
+                                EVENTS
     //////////////////////////////////////////////////////////////*/
 
     /// @notice Emitted after a successful deposit.
@@ -124,14 +124,8 @@ contract CharityVault is ERC20, Auth {
     /// @param underlyingAmount The amount of underlying tokens that were withdrawn.
     event CharityWithdrawCV(address indexed charity, uint256 underlyingAmount);
 
-    /// @notice Emitted when we receive an ether transfer
-    /// @notice Ether transferred to the contract is directed straight to the charity!
-    /// @param sender The function caller
-    /// @param amount The amount of ether transferred
-    event TransparentTransfer(address indexed sender, uint256 amount);
-
     /*///////////////////////////////////////////////////////////////
-                         DEPOSIT/WITHDRAWAL LOGIC
+                        DEPOSIT/WITHDRAWAL LOGIC
     //////////////////////////////////////////////////////////////*/
 
     /// @notice Deposit the vault's underlying token to mint rcvTokens.
@@ -182,6 +176,49 @@ contract CharityVault is ERC20, Auth {
             rvTokensClaimedByCharity;
         rvTokensClaimedByCharity = rvTokensEarnedByCharity;
         VAULT.transfer(CHARITY, rvTokensToClaim);
+    }
+
+    /// @notice returns the rvTokens owned by a user
+    function rvTokensOwnedByUser(address user)
+        public
+        view
+        returns (uint256)
+    {
+        uint256 pricePerShareNow = VAULT.exchangeRate();
+
+        uint256 underlyingEarnedByUsersSinceLastExtraction = (VAULT.balanceOf(
+            address(this)
+        ) - (rvTokensEarnedByCharity - rvTokensClaimedByCharity)) *
+            (pricePerShareNow - pricePerShareAtLastExtraction);
+        uint256 underlyingToUser = (underlyingEarnedByUsersSinceLastExtraction *
+                this.balanceOf(user) / totalSupply) / 100;
+        uint256 rcvTokensToUser = underlyingToUser.fdiv(
+            pricePerShareNow,
+            VAULT.BASE_UNIT()
+        );
+
+        return rcvTokensToUser;
+    }
+
+    /// @notice Withdraws a user's interest earned from the vault.
+    /// @param withdrawalAmount The amount of the underlying token to withdraw.
+    function withdraw(uint256 withdrawalAmount) external {
+        // We don't allow withdrawing 0 to prevent emitting a useless event.
+        require(withdrawalAmount != 0, "AMOUNT_CANNOT_BE_ZERO");
+
+        // First extract interest to charity
+        extractInterestToCharity();
+
+        // Determine the equivalent amount of rcvTokens and burn them.
+        // This will revert if the user does not have enough rcvTokens.
+        _burn(msg.sender, withdrawalAmount.fdiv(VAULT.exchangeRate(), BASE_UNIT));
+
+        uint256 rvTokensToUser = rvTokensOwnedByUser(msg.sender);
+
+        require(rvTokensToUser >= withdrawalAmount, "INSUFFICIENT_FUNDS");
+
+        // Try to transfer balance to msg.sender
+        VAULT.transfer(msg.sender, withdrawalAmount);
     }
 
     /*///////////////////////////////////////////////////////////////

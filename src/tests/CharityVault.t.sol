@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.6;
 
-/* solhint-disable func-name-mixedcase */
-
 import {MockERC20} from "solmate/test/utils/MockERC20.sol";
 
 import {Vault} from "vaults/Vault.sol";
@@ -46,7 +44,7 @@ contract CharityVaultTest is DSTestPlus {
     }
 
     /// @dev Constructing a lone CharityVault should fail from the Auth modifier in the CharityVault Constructor
-    function testFail_construct_lone_cv() public {
+    function testFailConstructCharityVault() public {
         MockERC20 _underlying = new MockERC20("Fail Mock Token", "FAIL", 18);
         Vault _vault = new VaultFactory().deployVault(_underlying);
 
@@ -55,7 +53,7 @@ contract CharityVaultTest is DSTestPlus {
     }
 
     /// @notice Tests to make sure the deployed ERC20 metadata is correct
-    function test_properly_init_erc20() public {
+    function testProperlyInitErc20() public {
         assertERC20Eq(cvault.UNDERLYING(), underlying);
         assertEq(
             cvault.name(),
@@ -70,7 +68,7 @@ contract CharityVaultTest is DSTestPlus {
     }
 
     /// @notice Tests if we can deploy a charity vault with valid fuzzed parameters
-    function test_deploy_charity_vault(
+    function testDeployCharityVault(
         address payable _address,
         uint256 _feePercent
     ) public {
@@ -100,7 +98,7 @@ contract CharityVaultTest is DSTestPlus {
     }
 
     /// @notice Tests if deployment fails for invalid parameters
-    function testFail_deploy_charity_vault(
+    function testFailDeployCharityVault(
         address payable _address,
         uint256 _feePercent
     ) public {
@@ -124,40 +122,83 @@ contract CharityVaultTest is DSTestPlus {
         );
     }
 
-    // function test_charity_vault_deposit_functions_properly(uint256 amount) public {
-    //     // Validate fuzzing value
-    //     if (amount > type(uint256).max / 1e36) return;
+    /*///////////////////////////////////////////////////////////////
+                        DEPOSIT/WITHDRAWAL LOGIC
+    //////////////////////////////////////////////////////////////*/
 
-    //     // Mint underlying tokens to deposit into the vault.
-    //     underlying.mint(self, amount);
+    /// @notice Test depositing into CharityVault
+    function testDepositIntoCharityVault(
+        uint256 depositAmount
+    ) public {
+        // First burn any underlying tokens
+        // TODO: send to papa Vitalik's addy
+        underlying.transfer(address(0x0), underlying.balanceOf(address(this)));
 
-    //     // Approve underlying tokens.
-    //     underlying.approve(address(cvault), amount);
+        // Mint underlying tokens to deposit into the vault.
+        underlying.mint(address(this), depositAmount);
 
-    //     // Deposit
-    //     cvault.deposit(amount, underlying);
+        // ?? Approve underlying tokens. ??
+        // underlying.approve(address(cvault), amount);
 
-    //     // TODO: Check to make sure CharityVaults
-    //     // has a mapping for user deposit -> CharityDeposit { charity_rate, charity(variable enum?), amount }
+        // Deposit Tokens into the CharityVault
+        cvault.deposit(depositAmount);
+
+        // Assert that we now have `depositAmount` rcvTokens
+        assertEq(cvault.balanceOf(address(this)), depositAmount);
+    }
+
+    /// @notice Test Charity Withdrawal from CharityVault
+    function testCharityVaultWithdrawal() public {
+        cvault.withdrawInterestToCharity();
+    }
+
+    /// @notice Test that we cannot deposit more than the approved amount of underlying
+    function testFailDepositWithNotEnoughApproval() public {
+        underlying.mint(address(this), 0.5e18);
+        underlying.approve(address(cvault), 0.5e18);
+
+        cvault.deposit(1e18);
+    }
+
+    function testFailWithdrawWithNotEnoughBalance() public {
+        underlying.mint(address(this), 0.5e18);
+        underlying.approve(address(cvault), 0.5e18);
+
+        cvault.deposit(0.5e18);
+
+        cvault.withdraw(1e18);
+    }
+
+    function testFailRedeemWithNotEnoughBalance() public {
+        underlying.mint(address(this), 0.5e18);
+        underlying.approve(address(cvault), 0.5e18);
+
+        cvault.deposit(0.5e18);
+
+        // cvault.redeem(1e18);
+    }
+
+    // function testFailRedeemWithNoBalance() public {
+    //     vault.redeem(1e18);
     // }
 
-    // function test_vcharity_ault_withdraw_functions_properly(uint256 amount) public {
-    //     // If the number is too large we can't test with it.
-    //     if (amount > (type(uint256).max / 1e37) || amount == 0) return;
+    function testFailWithdrawWithNoBalance() public {
+        cvault.withdraw(1e18);
+    }
 
-    //     // Mint, approve, and deposit tokens into the vault.
-    //     test_charity_vault_deposit_functions_properly(amount);
+    function testFailDepositWithNoApproval() public {
+        cvault.deposit(1e18);
+    }
 
-    //     // Can withdraw full balance from the vault.
-    //     cvault.withdraw(amount, underlying);
-
-    //     // fvTokens are set to 0.
-    //     assertEq(cvault.getVaultBalance(self, underlying), 0);
-    //     assertEq(underlying.balanceOf(self), amount);
-
-    //     // TODO: Check to make sure withdraw deleted the CharityVaults
-    //     // mapping for user deposit -> CharityDeposit { charity_rate, charity(variable enum?), amount }
+    // function testFailRedeemZero() public {
+    //     cvault.redeem(0);
     // }
+
+    function testFailWithdrawZero() public {
+        cvault.withdraw(0);
+    }
+
+    function testFailDepositZero() public {
+        cvault.deposit(0);
+    }
 }
-
-/* solhint-enable func-name-mixedcase */
