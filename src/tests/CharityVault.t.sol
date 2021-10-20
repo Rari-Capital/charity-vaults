@@ -122,11 +122,9 @@ contract CharityVaultTest is DSTestPlus {
         );
     }
 
-
     /*///////////////////////////////////////////////////////////////
                     BASIC DEPOSIT/WITHDRAWAL TESTS
     //////////////////////////////////////////////////////////////*/
-
 
     /// @notice Tests depositing and withdrawing into the Charity Vault
     function testAtomicDepositWithdraw() public {
@@ -197,21 +195,9 @@ contract CharityVaultTest is DSTestPlus {
 
         cvault.deposit(0.5e18);
 
-        // cvault.withdraw(1e18);
+        cvault.withdraw(1e18);
     }
 
-    function testFailRedeemWithNotEnoughBalance() public {
-        underlying.mint(address(this), 0.5e18);
-        underlying.approve(address(cvault), 0.5e18);
-
-        cvault.deposit(0.5e18);
-
-        // cvault.redeem(1e18);
-    }
-
-    // function testFailRedeemWithNoBalance() public {
-    //     vault.redeem(1e18);
-    // }
 
     function testFailWithdrawWithNoBalance() public {
         cvault.withdraw(1e18);
@@ -220,10 +206,6 @@ contract CharityVaultTest is DSTestPlus {
     function testFailDepositWithNoApproval() public {
         cvault.deposit(1e18);
     }
-
-    // function testFailRedeemZero() public {
-    //     cvault.redeem(0);
-    // }
 
     function testFailWithdrawZero() public {
         cvault.withdraw(0);
