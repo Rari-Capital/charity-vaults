@@ -51,8 +51,7 @@ contract CharityVaultFactory is Auth(msg.sender) {
         // Use the create2 opcode to deploy a CharityVault contract.
         // This will revert if a vault with this underlying has already been
         // deployed, as the salt would be the same and we can't deploy with it twice.
-        cvault = new CharityVault{// Compute Inline CharityVault Salt, h/t @t11s
-
+        cvault = new CharityVault{ // Compute Inline CharityVault Salt, h/t @t11s
             salt: keccak256(
                 abi.encode(
                     address(underlying).fillLast12Bytes(),
