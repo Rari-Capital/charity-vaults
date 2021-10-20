@@ -25,28 +25,38 @@ contract CharityVault is ERC20, Auth {
     /// @dev we need to compose a Vault here because the Vault functions are external
     /// @dev which are not able to be overridden since that requires public virtual specifiers
     /// @dev immutable instead of constant so we can set VAULT in the constructor
+    // solhint-disable-next-line var-name-mixedcase
     Vault private immutable VAULT;
 
     /// @notice The underlying token for the vault.
     /// @dev immutable instead of constant so we can set UNDERLYING in the constructor
+    // solhint-disable-next-line var-name-mixedcase
     ERC20 public immutable UNDERLYING;
 
     /// @notice the charity's payable donation address
     /// @dev immutable instead of constant so we can set CHARITY in the constructor
+    // solhint-disable-next-line var-name-mixedcase
     address payable public immutable CHARITY;
 
     /// @notice the percent of the earned interest that should be redirected to the charity
     /// @dev immutable instead of constant so we can set BASE_FEE in the constructor
+    // solhint-disable-next-line var-name-mixedcase
     uint256 public immutable BASE_FEE;
 
     /// @notice One base unit of the underlying, and hence rvToken.
     /// @dev Will be equal to 10 ** UNDERLYING.decimals() which means
     /// if the token has 18 decimals ONE_WHOLE_UNIT will equal 10**18.
+    // solhint-disable-next-line var-name-mixedcase
     uint256 public immutable BASE_UNIT;
 
-    uint256 pricePerShareAtLastExtraction;
-    uint256 rvTokensEarnedByCharity;
-    uint256 rvTokensClaimedByCharity;
+    /// @notice Price per share of rvTokens earned at the last extraction
+    uint256 private pricePerShareAtLastExtraction;
+
+    /// @notice accumulated rvTokens earned by the Charity
+    uint256 private rvTokensEarnedByCharity;
+
+    /// @notice rvTokens claimed by the Charity
+    uint256 private rvTokensClaimedByCharity;
 
     /// @notice Creates a new charity vault based on an underlying token.
     /// @param _UNDERLYING An underlying ERC20 compliant token.
@@ -54,9 +64,13 @@ contract CharityVault is ERC20, Auth {
     /// @param _BASE_FEE The percent of earned interest to be routed to the Charity
     /// @param _VAULT The existing/deployed Vault for the respective underlying token
     constructor(
+        // solhint-disable-next-line var-name-mixedcase
         ERC20 _UNDERLYING,
+        // solhint-disable-next-line var-name-mixedcase
         address payable _CHARITY,
+        // solhint-disable-next-line var-name-mixedcase
         uint256 _BASE_FEE,
+        // solhint-disable-next-line var-name-mixedcase
         Vault _VAULT
     )
         ERC20(
@@ -89,12 +103,6 @@ contract CharityVault is ERC20, Auth {
         // TODO: Once we upgrade to 0.8.9 we can use 10**decimals
         // instead which will save us an external call and SLOAD.
         BASE_UNIT = 10**_UNDERLYING.decimals();
-
-        // ?? We shouldn't ever create a new vault here right ??
-        // ?? Vaults should already exist ??
-        // vault = new Vault(_underlying);
-
-        // TODO: Do we need a BASE_UNIT... prolly
     }
 
     /*///////////////////////////////////////////////////////////////

@@ -1,71 +1,70 @@
 name: Tests
 
 on:
-  push:
-    branches: 
-      - main
-      - develop
-  pull_request:
+    push:
+        branches:
+            - main
+            - develop
+    pull_request:
 
 defaults:
-  run:
-    shell: bash
-      
-env:
-  CI: true
-  FORCE_COLOR: 2
+    run:
+        shell: bash
 
+env:
+    CI: true
+    FORCE_COLOR: 2
 
 jobs:
-  tests:
-    runs-on: ubuntu-latest
+    tests:
+        runs-on: ubuntu-latest
 
-    steps:
-      - uses: actions/checkout@v2
-        with:
-           submodules: recursive
+        steps:
+            - uses: actions/checkout@v2
+              with:
+                  submodules: recursive
 
-      - uses: actions/setup-node@v2
-      - uses: cachix/install-nix-action@v13
-      - uses: cachix/cachix-action@v10
-        with:
-          name: dapp
+            - uses: actions/setup-node@v2
+            - uses: cachix/install-nix-action@v13
+            - uses: cachix/cachix-action@v10
+              with:
+                  name: dapp
 
-      - name: Install dependencies
-        run: nix-shell --run 'make'
-        
-      - name: Check contracts are linted
-        id: lint-check
-        run: yarn lint:check
+            - name: Install dependencies
+              run: nix-shell --run 'make'
 
-      - name: Run tests
-        id: tests-run
-        run: nix-shell --run 'make test'
-        # Enable this if using forking tests
-        # env:
-        #  ETH_RPC_URL: https://eth-mainnet.alchemyapi.io/v2/${{ secrets.ALCHEMY_API_KEY }}
+            - name: Check contracts are linted
+              id: lint-check
+              run: yarn lint:check
 
-  deploy:
-    runs-on: ubuntu-latest
+            - name: Run tests
+              id: tests-run
+              run: nix-shell --run 'make test'
+              # Enable this if using forking tests
+              # env:
+              #  ETH_RPC_URL: https://eth-mainnet.alchemyapi.io/v2/${{ secrets.ALCHEMY_API_KEY }}
 
-    steps:
-      - uses: actions/checkout@v2
-        with:
-           submodules: recursive
-      - uses: actions/setup-node@v2
-      - uses: cachix/install-nix-action@v13
-      - uses: cachix/cachix-action@v10
-        with:
-          name: dapp
+    deploy:
+        runs-on: ubuntu-latest
 
-      - name: Install dependencies
-        id: make-dependencies
-        run: nix-shell --run 'make'
+        steps:
+            - uses: actions/checkout@v2
+              with:
+                  submodules: recursive
+            - uses: actions/setup-node@v2
+            - uses: cachix/install-nix-action@v13
+            - uses: cachix/cachix-action@v10
+              with:
+                  name: dapp
 
-      - name: Build the contracts
-        id: make-build
-        run: nix-shell --run 'make build'
+            - name: Install dependencies
+              id: make-dependencies
+              run: nix-shell --run 'make'
 
-      - name: Deploy and run checks
-        id: test-deploy
-        run: nix-shell --run './scripts/test-deploy.sh'
+            - name: Build the contracts
+              id: make-build
+              run: nix-shell --run 'make build'
+
+            - name: Deploy and run checks
+              id: test-deploy
+              run: nix-shell --run './scripts/test-deploy.sh'

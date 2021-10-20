@@ -16,6 +16,7 @@ contract CharityVaultFactory is Auth(msg.sender) {
 
     /// @dev we need to store a vaultFactory to fetch existing Vaults
     /// @dev immutable instead of constant so we can set VAULT_FACTORY in the constructor
+    // solhint-disable-next-line var-name-mixedcase
     VaultFactory private immutable VAULT_FACTORY;
 
     /// @notice Creates a new CharityVaultFactory

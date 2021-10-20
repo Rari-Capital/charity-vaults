@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.6;
 
+/* solhint-disable func-name-mixedcase */
+
 import {MockERC20} from "solmate/test/utils/MockERC20.sol";
 
 import {Vault} from "vaults/Vault.sol";
@@ -12,20 +14,20 @@ import {CharityVault} from "../CharityVault.sol";
 import {CharityVaultFactory} from "../CharityVaultFactory.sol";
 
 contract CharityVaultTest is DSTestPlus {
-    MockERC20 underlying;
+    MockERC20 public underlying;
 
     /// @dev Vault Logic
-    Vault vault;
-    VaultFactory vaultFactory;
-    MockStrategy strategy1;
-    MockStrategy strategy2;
+    Vault public vault;
+    VaultFactory public vaultFactory;
+    MockStrategy public strategy1;
+    MockStrategy public strategy2;
 
     /// @dev CharityVault Logic
-    CharityVault cvault;
-    CharityVaultFactory cvaultFactory;
-    address payable immutable caddress = payable(address(0));
-    uint256 immutable cfeePercent = 10;
-    uint256 nonce = 1;
+    CharityVault public cvault;
+    CharityVaultFactory public cvaultFactory;
+    address payable public immutable caddress = payable(address(0));
+    uint256 public immutable cfeePercent = 10;
+    uint256 public nonce = 1;
 
     function setUp() public {
         underlying = new MockERC20("Mock Token", "TKN", 18);
@@ -135,7 +137,8 @@ contract CharityVaultTest is DSTestPlus {
     //     // Deposit
     //     cvault.deposit(amount, underlying);
 
-    //     // TODO: Check to make sure CharityVaults has a mapping for user deposit -> CharityDeposit { charity_rate, charity(variable enum?), amount }
+    //     // TODO: Check to make sure CharityVaults
+    //     // has a mapping for user deposit -> CharityDeposit { charity_rate, charity(variable enum?), amount }
     // }
 
     // function test_vcharity_ault_withdraw_functions_properly(uint256 amount) public {
@@ -152,6 +155,9 @@ contract CharityVaultTest is DSTestPlus {
     //     assertEq(cvault.getVaultBalance(self, underlying), 0);
     //     assertEq(underlying.balanceOf(self), amount);
 
-    //     // TODO: Check to make sure withdraw deleted the CharityVaults mapping for user deposit -> CharityDeposit { charity_rate, charity(variable enum?), amount }
+    //     // TODO: Check to make sure withdraw deleted the CharityVaults
+    //     // mapping for user deposit -> CharityDeposit { charity_rate, charity(variable enum?), amount }
     // }
 }
+
+/* solhint-enable func-name-mixedcase */

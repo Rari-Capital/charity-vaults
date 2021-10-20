@@ -13,12 +13,10 @@ make
 make test
 ```
 
-
 ### Credits
 
-- [t11s](https://twitter.com/transmissions11), [Jet Jadeja](https://twitter.com/JetJadeja), and [David Lucid](https://twitter.com/davidlucid) for the exceptional guidance.
-- [Georgios Konstantopoulos](https://github.com/gakonst) for the amazing [dapptools-template](https://github.com/gakonst/dapptools-template) resource.
-
+-   [t11s](https://twitter.com/transmissions11), [Jet Jadeja](https://twitter.com/JetJadeja), and [David Lucid](https://twitter.com/davidlucid) for the exceptional guidance.
+-   [Georgios Konstantopoulos](https://github.com/gakonst) for the amazing [dapptools-template](https://github.com/gakonst/dapptools-template) resource.
 
 ### Generate Pretty Visuals
 
@@ -33,7 +31,6 @@ Run `surya graph -s src/CharityVault.sol | dot -Tpng > assets/CharityVault.png`
 #### CharityVaultFactory.sol
 
 Run `surya graph -s src/CharityVaultFactory.sol | dot -Tpng > assets/CharityVaultFactory.png`
-
 
 ## Deploying
 
@@ -79,12 +76,12 @@ ETH_FROM=xxxx ETH_RPC_URL=xxxx ETH_GAS=xxxx dapp create VaultFactory --verify
 
 A Vault for [Goerli USDC](https://goerli.etherscan.io/token/0x5ffbac75efc9547fbc822166fed19b05cd5890bb) (`0x5ffbac75efc9547fbc822166fed19b05cd5890bb`) Vault was deployed to `0x256Df578846117A15106F1F0e99155afF5E76d66` using the `deployVault` permissionless function in the `VaultFactory` on [Goerli Etherscan](https://goerli.etherscan.io/address/0x256Df578846117A15106F1F0e99155afF5E76d66).
 
-
 Since we can't pass the `--verify` flag, we have to verify the Vault contract using dapptools `verify-contract` command as such.
 
 ```
 ETH_FROM=xxxx ETH_RPC_URL=xxxx ETH_GAS=xxxx dapp verify-contract src/Vault.sol:Vault 0x256Df578846117A15106F1F0e99155afF5E76d66 0x5ffbac75efc9547fbc822166fed19b05cd5890bb
 ```
+
 NOTE: we have to pass in the address of USDC (0x5ffbac75efc9547fbc822166fed19b05cd5890bb) since it is an argument in the Vault constructor
 
 #### Execute
@@ -142,35 +139,35 @@ curl https://dapp.tools/install | sh
 
 ## DappTools Resources
 
-* [DappTools](https://dapp.tools)
-    * [Hevm Docs](https://github.com/dapphub/dapptools/blob/master/src/hevm/README.md)
-    * [Dapp Docs](https://github.com/dapphub/dapptools/tree/master/src/dapp/README.md)
-    * [Seth Docs](https://github.com/dapphub/dapptools/tree/master/src/seth/README.md)
-* [DappTools Overview](https://www.youtube.com/watch?v=lPinWgaNceM)
-* [Awesome-DappTools](https://github.com/rajivpo/awesome-dapptools)
-
-
+-   [DappTools](https://dapp.tools)
+    -   [Hevm Docs](https://github.com/dapphub/dapptools/blob/master/src/hevm/README.md)
+    -   [Dapp Docs](https://github.com/dapphub/dapptools/tree/master/src/dapp/README.md)
+    -   [Seth Docs](https://github.com/dapphub/dapptools/tree/master/src/seth/README.md)
+-   [DappTools Overview](https://www.youtube.com/watch?v=lPinWgaNceM)
+-   [Awesome-DappTools](https://github.com/rajivpo/awesome-dapptools)
 
 ### FAQS
 
 1. Are users able to permissionlessly create Vaults?
+
 ```
 A: Yes, users can permissionlessly create Vaults using the [`VaultFactory`](https://github.com/Rari-Capital/vaults/blob/main/src/VaultFactory.sol) `deployVault` function. By extension, the [`CharityVaultsFactory`](https://github.com/Rari-Capital/charity-vaults/blob/main/src/CharityVaultFactory.sol) allows users to deploy [`CharityVaults`](https://github.com/Rari-Capital/charity-vaults/blob/main/src/CharityVault.sol) permissionlessly using it's `deployCharityVault` function.
 ```
 
 2. How do we envision deposits in a Vault from a ui perspective?
-Say I deposit usdc with one referral link for Charity A with a gift rate of 10% of any interest earned.
-Then I deposit usdc with a different referral link for Charity B with a gift rate of 20% of any interest earned.
-Will the I see a list of the deposits on the UI with each respective interest earned, amount, and gift rate + charity? And I basically have the ability to withdraw x amount from each deposit in one transaction?
+   Say I deposit usdc with one referral link for Charity A with a gift rate of 10% of any interest earned.
+   Then I deposit usdc with a different referral link for Charity B with a gift rate of 20% of any interest earned.
+   Will the I see a list of the deposits on the UI with each respective interest earned, amount, and gift rate + charity? And I basically have the ability to withdraw x amount from each deposit in one transaction?
+
 ```
 A:
 ```
 
 3. Should referrals have the option to choose the underlying asset or does the charity automatically take any donations?
+
 ```
 A: Yes, Endaoment confirmed they will be able to take any donations.
 ```
-
 
 ### Erroneous
 
@@ -190,3 +187,13 @@ receive() external payable {
     emit TransparentTransfer(msg.sender, msg.value);
 }
 ```
+
+### Potential Known Issues
+
+Prettier outputs `[warn] Code style issues found in the above file(s). Forgot to run Prettier?`
+
+-   This is most likely caused by a global installation of prettier without a global installation of the `prettier-solidity-plugin` package. Simply run an `npm install prettier prettier-plugin-solidity -g` to install both packages globally.
+
+Unknown command `jq`
+
+-   Run a `brew install jq`

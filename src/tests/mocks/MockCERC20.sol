@@ -6,7 +6,7 @@ import {ERC20} from "solmate/erc20/ERC20.sol";
 import {CErc20} from "../../external/CErc20.sol";
 
 contract MockCERC20 is ERC20("Mock CERC20", "MCERC20", 18) {
-    ERC20 immutable underlying;
+    ERC20 public immutable underlying;
 
     constructor(ERC20 _underlying) {
         underlying = _underlying;
