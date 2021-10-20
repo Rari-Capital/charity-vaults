@@ -179,19 +179,15 @@ contract CharityVault is ERC20, Auth {
     }
 
     /// @notice returns the rvTokens owned by a user
-    function rvTokensOwnedByUser(address user)
-        public
-        view
-        returns (uint256)
-    {
+    function rvTokensOwnedByUser(address user) public view returns (uint256) {
         uint256 pricePerShareNow = VAULT.exchangeRate();
 
         uint256 underlyingEarnedByUsersSinceLastExtraction = (VAULT.balanceOf(
             address(this)
         ) - (rvTokensEarnedByCharity - rvTokensClaimedByCharity)) *
             (pricePerShareNow - pricePerShareAtLastExtraction);
-        uint256 underlyingToUser = (underlyingEarnedByUsersSinceLastExtraction *
-                this.balanceOf(user) / totalSupply) / 100;
+        uint256 underlyingToUser = ((underlyingEarnedByUsersSinceLastExtraction *
+                this.balanceOf(user)) / totalSupply) / 100;
         uint256 rcvTokensToUser = underlyingToUser.fdiv(
             pricePerShareNow,
             VAULT.BASE_UNIT()
@@ -211,7 +207,10 @@ contract CharityVault is ERC20, Auth {
 
         // Determine the equivalent amount of rcvTokens and burn them.
         // This will revert if the user does not have enough rcvTokens.
-        _burn(msg.sender, withdrawalAmount.fdiv(VAULT.exchangeRate(), BASE_UNIT));
+        _burn(
+            msg.sender,
+            withdrawalAmount.fdiv(VAULT.exchangeRate(), BASE_UNIT)
+        );
 
         uint256 rvTokensToUser = rvTokensOwnedByUser(msg.sender);
 

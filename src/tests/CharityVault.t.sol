@@ -122,30 +122,61 @@ contract CharityVaultTest is DSTestPlus {
         );
     }
 
+
     /*///////////////////////////////////////////////////////////////
-                        DEPOSIT/WITHDRAWAL LOGIC
+                    BASIC DEPOSIT/WITHDRAWAL TESTS
     //////////////////////////////////////////////////////////////*/
 
-    /// @notice Test depositing into CharityVault
-    function testDepositIntoCharityVault(
-        uint256 depositAmount
-    ) public {
-        // First burn any underlying tokens
-        // TODO: send to papa Vitalik's addy
-        underlying.transfer(address(0x0), underlying.balanceOf(address(this)));
 
-        // Mint underlying tokens to deposit into the vault.
-        underlying.mint(address(this), depositAmount);
+    /// @notice Tests depositing and withdrawing into the Charity Vault
+    function testAtomicDepositWithdraw() public {
+        underlying.mint(address(this), 1e18);
+        underlying.approve(address(cvault), 1e18);
 
-        // ?? Approve underlying tokens. ??
-        // underlying.approve(address(cvault), amount);
+        // Track balance prior to deposit
+        uint256 preDepositBal = underlying.balanceOf(address(this));
+        cvault.deposit(1e18);
 
-        // Deposit Tokens into the CharityVault
-        cvault.deposit(depositAmount);
+        // After a successfull Charity Vault Deposit,
+        // the vault should contain the amount underlying token
+        assertEq(vault.exchangeRate(), vault.BASE_UNIT());
+        assertEq(vault.totalHoldings(), 1e18);
+        assertEq(vault.totalFloat(), 1e18);
+        assertEq(underlying.balanceOf(address(this)), preDepositBal - 1e18);
 
-        // Assert that we now have `depositAmount` rcvTokens
-        assertEq(cvault.balanceOf(address(this)), depositAmount);
+        // The vault should have no balance for this depositor
+        assertEq(vault.balanceOf(address(this)), 0);
+
+        // The vault should have mapped the underlying token to the cvault
+        assertEq(vault.balanceOfUnderlying(address(cvault)), 1e18);
+
+        // The user should be minted rcvTokens 1:1 to the underlying token
+        assertEq(cvault.balanceOf(address(this)), 1e18);
+
+        cvault.withdraw(1e18);
+
+        // Vault Balances
+        assertEq(vault.exchangeRate(), vault.BASE_UNIT());
+        assertEq(vault.totalStrategyHoldings(), 0);
+        assertEq(vault.totalHoldings(), 0);
+        assertEq(vault.totalFloat(), 0);
+        assertEq(vault.balanceOf(address(this)), 0);
+        assertEq(vault.balanceOfUnderlying(address(this)), 0);
+
+        // The vault should have no underlying balance for the Charity Vault
+        assertEq(vault.balanceOfUnderlying(address(cvault)), 0);
+        assertEq(vault.balanceOf(address(cvault)), 0);
+
+        // The Charity Vault should now have no rcvTokens for the Depositor
+        assertEq(cvault.balanceOf(address(this)), 0);
+
+        // Depositor Balances
+        assertEq(underlying.balanceOf(address(this)), preDepositBal);
     }
+
+    /*///////////////////////////////////////////////////////////////
+                    DEPOSIT/WITHDRAWAL SANITY CHECK TESTS
+    //////////////////////////////////////////////////////////////*/
 
     /// @notice Test Charity Withdrawal from CharityVault
     function testCharityVaultWithdrawal() public {
@@ -166,7 +197,7 @@ contract CharityVaultTest is DSTestPlus {
 
         cvault.deposit(0.5e18);
 
-        cvault.withdraw(1e18);
+        // cvault.withdraw(1e18);
     }
 
     function testFailRedeemWithNotEnoughBalance() public {
