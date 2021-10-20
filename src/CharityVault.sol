@@ -9,7 +9,6 @@ import {Vault} from "vaults/Vault.sol";
 
 import {CharityVaultFactory} from "./CharityVaultFactory.sol";
 
-
 /// @title Fuse Charity Vault (fcvToken)
 /// @author Transmissions11, JetJadeja, Andreas Bigger, Nicolas Neven, Adam Egyed
 /// @notice Yield bearing token that enables users to swap
@@ -26,38 +25,59 @@ contract CharityVault is ERC20, Auth {
     /// @dev we need to compose a Vault here because the Vault functions are external
     /// @dev which are not able to be overridden since that requires public virtual specifiers
     /// @dev immutable instead of constant so we can set VAULT in the constructor
+    // solhint-disable-next-line var-name-mixedcase
     Vault private immutable VAULT;
 
     /// @notice The underlying token for the vault.
     /// @dev immutable instead of constant so we can set UNDERLYING in the constructor
+    // solhint-disable-next-line var-name-mixedcase
     ERC20 public immutable UNDERLYING;
 
     /// @notice the charity's payable donation address
     /// @dev immutable instead of constant so we can set CHARITY in the constructor
+    // solhint-disable-next-line var-name-mixedcase
     address payable public immutable CHARITY;
 
     /// @notice the percent of the earned interest that should be redirected to the charity
     /// @dev immutable instead of constant so we can set BASE_FEE in the constructor
+    // solhint-disable-next-line var-name-mixedcase
     uint256 public immutable BASE_FEE;
 
     /// @notice One base unit of the underlying, and hence rvToken.
     /// @dev Will be equal to 10 ** UNDERLYING.decimals() which means
     /// if the token has 18 decimals ONE_WHOLE_UNIT will equal 10**18.
+    // solhint-disable-next-line var-name-mixedcase
     uint256 public immutable BASE_UNIT;
 
-    uint256 pricePerShareAtLastExtraction;
-    uint256 rvTokensEarnedByCharity;
-    uint256 rvTokensClaimedByCharity;
+    /// @notice Price per share of rvTokens earned at the last extraction
+    uint256 private pricePerShareAtLastExtraction;
+
+    /// @notice accumulated rvTokens earned by the Charity
+    uint256 private rvTokensEarnedByCharity;
+
+    /// @notice rvTokens claimed by the Charity
+    uint256 private rvTokensClaimedByCharity;
 
     /// @notice Creates a new charity vault based on an underlying token.
     /// @param _UNDERLYING An underlying ERC20 compliant token.
     /// @param _CHARITY The address of the charity
     /// @param _BASE_FEE The percent of earned interest to be routed to the Charity
     /// @param _VAULT The existing/deployed Vault for the respective underlying token
-    constructor(ERC20 _UNDERLYING, address payable _CHARITY, uint256 _BASE_FEE, Vault _VAULT)
+    constructor(
+        // solhint-disable-next-line var-name-mixedcase
+        ERC20 _UNDERLYING,
+        // solhint-disable-next-line var-name-mixedcase
+        address payable _CHARITY,
+        // solhint-disable-next-line var-name-mixedcase
+        uint256 _BASE_FEE,
+        // solhint-disable-next-line var-name-mixedcase
+        Vault _VAULT
+    )
         ERC20(
             // ex: Rari DAI Charity Vault
-            string(abi.encodePacked("Rari ", _UNDERLYING.name(), " Charity Vault")),
+            string(
+                abi.encodePacked("Rari ", _UNDERLYING.name(), " Charity Vault")
+            ),
             // ex: rcvDAI
             string(abi.encodePacked("rcv", _UNDERLYING.symbol())),
             // ex: 18
@@ -69,7 +89,10 @@ contract CharityVault is ERC20, Auth {
         )
     {
         // Enforce BASE_FEE
-        require(_BASE_FEE >= 0 && _BASE_FEE <= 100, "Fee Percent fails to meet [0, 100] bounds constraint.");
+        require(
+            _BASE_FEE >= 0 && _BASE_FEE <= 100,
+            "Fee Percent fails to meet [0, 100] bounds constraint."
+        );
 
         // Define our immutables
         UNDERLYING = _UNDERLYING;
@@ -80,16 +103,10 @@ contract CharityVault is ERC20, Auth {
         // TODO: Once we upgrade to 0.8.9 we can use 10**decimals
         // instead which will save us an external call and SLOAD.
         BASE_UNIT = 10**_UNDERLYING.decimals();
-
-        // ?? We shouldn't ever create a new vault here right ??
-        // ?? Vaults should already exist ??
-        // vault = new Vault(_underlying);
-
-        // TODO: Do we need a BASE_UNIT... prolly
     }
 
     /*///////////////////////////////////////////////////////////////
-                                 EVENTS
+                                EVENTS
     //////////////////////////////////////////////////////////////*/
 
     /// @notice Emitted after a successful deposit.
@@ -107,15 +124,8 @@ contract CharityVault is ERC20, Auth {
     /// @param underlyingAmount The amount of underlying tokens that were withdrawn.
     event CharityWithdrawCV(address indexed charity, uint256 underlyingAmount);
 
-    /// @notice Emitted when we receive an ether transfer
-    /// @notice Ether transferred to the contract is directed straight to the charity!
-    /// @param sender The function caller
-    /// @param amount The amount of ether transferred
-    event TransparentTransfer(address indexed sender, uint256 amount);
-
-
     /*///////////////////////////////////////////////////////////////
-                         DEPOSIT/WITHDRAWAL LOGIC
+                        DEPOSIT/WITHDRAWAL LOGIC
     //////////////////////////////////////////////////////////////*/
 
     /// @notice Deposit the vault's underlying token to mint rcvTokens.
@@ -128,28 +138,86 @@ contract CharityVault is ERC20, Auth {
         extractInterestToCharity();
 
         // Determine the equivalent amount of rvTokens that will be minted to this charity vault.
-        uint256 rvTokensToMint = underlyingAmount.fdiv(VAULT.exchangeRate(), BASE_UNIT);
-        _mint(msg.sender, rvTokensToMint.fdiv(rcvRvExchangeRateAtLastExtraction(), BASE_UNIT));
+        uint256 rvTokensToMint = underlyingAmount.fdiv(
+            VAULT.exchangeRate(),
+            BASE_UNIT
+        );
+        _mint(
+            msg.sender,
+            rvTokensToMint.fdiv(rcvRvExchangeRateAtLastExtraction(), BASE_UNIT)
+        );
         emit DepositCV(msg.sender, underlyingAmount);
 
         // Transfer in UNDERLYING tokens from the sender to the vault
-        UNDERLYING.safeTransferFrom(msg.sender, address(this), underlyingAmount);
+        UNDERLYING.safeTransferFrom(
+            msg.sender,
+            address(this),
+            underlyingAmount
+        );
 
         // Deposit to the VAULT
         VAULT.deposit(underlyingAmount);
     }
 
     // Returns the total holdings of rvTokens at the time of the last extraction.
-    function rvTokensOwnedByUsersAtLastExtraction() internal view returns (uint256) {
-        return (VAULT.balanceOf(address(this)) - (rvTokensEarnedByCharity - rvTokensClaimedByCharity));
+    function rvTokensOwnedByUsersAtLastExtraction()
+        internal
+        view
+        returns (uint256)
+    {
+        return (VAULT.balanceOf(address(this)) -
+            (rvTokensEarnedByCharity - rvTokensClaimedByCharity));
     }
 
     /// @dev Extracts and withdraws unclaimed interest earned by charity.
     function withdrawInterestToCharity() external {
         extractInterestToCharity();
-        uint256 rvTokensToClaim = rvTokensEarnedByCharity - rvTokensClaimedByCharity;
+        uint256 rvTokensToClaim = rvTokensEarnedByCharity -
+            rvTokensClaimedByCharity;
         rvTokensClaimedByCharity = rvTokensEarnedByCharity;
         VAULT.transfer(CHARITY, rvTokensToClaim);
+    }
+
+    /// @notice returns the rvTokens owned by a user
+    function rvTokensOwnedByUser(address user) public view returns (uint256) {
+        uint256 pricePerShareNow = VAULT.exchangeRate();
+
+        uint256 underlyingEarnedByUsersSinceLastExtraction = (VAULT.balanceOf(
+            address(this)
+        ) - (rvTokensEarnedByCharity - rvTokensClaimedByCharity)) *
+            (pricePerShareNow - pricePerShareAtLastExtraction);
+        uint256 underlyingToUser = ((underlyingEarnedByUsersSinceLastExtraction *
+                this.balanceOf(user)) / totalSupply) / 100;
+        uint256 rcvTokensToUser = underlyingToUser.fdiv(
+            pricePerShareNow,
+            VAULT.BASE_UNIT()
+        );
+
+        return rcvTokensToUser;
+    }
+
+    /// @notice Withdraws a user's interest earned from the vault.
+    /// @param withdrawalAmount The amount of the underlying token to withdraw.
+    function withdraw(uint256 withdrawalAmount) external {
+        // We don't allow withdrawing 0 to prevent emitting a useless event.
+        require(withdrawalAmount != 0, "AMOUNT_CANNOT_BE_ZERO");
+
+        // First extract interest to charity
+        extractInterestToCharity();
+
+        // Determine the equivalent amount of rcvTokens and burn them.
+        // This will revert if the user does not have enough rcvTokens.
+        _burn(
+            msg.sender,
+            withdrawalAmount.fdiv(VAULT.exchangeRate(), BASE_UNIT)
+        );
+
+        uint256 rvTokensToUser = rvTokensOwnedByUser(msg.sender);
+
+        require(rvTokensToUser >= withdrawalAmount, "INSUFFICIENT_FUNDS");
+
+        // Try to transfer balance to msg.sender
+        VAULT.transfer(msg.sender, withdrawalAmount);
     }
 
     /*///////////////////////////////////////////////////////////////
@@ -165,35 +233,32 @@ contract CharityVault is ERC20, Auth {
             return;
         }
 
-        uint256 underlyingEarnedByUsersSinceLastExtraction = (VAULT.balanceOf(address(this)) - (rvTokensEarnedByCharity - rvTokensClaimedByCharity)) * (pricePerShareNow - pricePerShareAtLastExtraction);
-        uint256 underlyingToCharity = underlyingEarnedByUsersSinceLastExtraction * BASE_FEE / 100;
-        uint256 rvTokensToCharity = underlyingToCharity.fdiv(pricePerShareNow, VAULT.BASE_UNIT());
+        uint256 underlyingEarnedByUsersSinceLastExtraction = (VAULT.balanceOf(
+            address(this)
+        ) - (rvTokensEarnedByCharity - rvTokensClaimedByCharity)) *
+            (pricePerShareNow - pricePerShareAtLastExtraction);
+        uint256 underlyingToCharity = (underlyingEarnedByUsersSinceLastExtraction *
+                BASE_FEE) / 100;
+        uint256 rvTokensToCharity = underlyingToCharity.fdiv(
+            pricePerShareNow,
+            VAULT.BASE_UNIT()
+        );
         pricePerShareAtLastExtraction = pricePerShareNow;
         rvTokensEarnedByCharity += rvTokensToCharity;
     }
 
     // Returns the exchange rate of rcvTokens in terms of rvTokens since the last extraction.
-    function rcvRvExchangeRateAtLastExtraction() internal view returns (uint256) {
+    function rcvRvExchangeRateAtLastExtraction()
+        internal
+        view
+        returns (uint256)
+    {
         // If there are no rvTokens in circulation, return an exchange rate of 1:1.
         if (totalSupply == 0) return BASE_UNIT;
 
         // TODO: Optimize double SLOAD of totalSupply here?
         // Calculate the exchange rate by diving the total holdings by the rvToken supply.
-        return rvTokensOwnedByUsersAtLastExtraction().fdiv(totalSupply, BASE_UNIT);
-    }
-
-    /*///////////////////////////////////////////////////////////////
-                        TRANSPARENT FALLBACK FUNCTIONALITY
-    //////////////////////////////////////////////////////////////*/
-
-    // TODO: remove?
-
-    /// @notice Erroneous ether sent will be forward to the charity as a donation
-    receive() external payable {
-        (bool sent, ) = CHARITY.call{value: msg.value}("");
-        require(sent, "Failed to send to CHARITY");
-
-        // If sent, emit logging event
-        emit TransparentTransfer(msg.sender, msg.value);
+        return
+            rvTokensOwnedByUsersAtLastExtraction().fdiv(totalSupply, BASE_UNIT);
     }
 }

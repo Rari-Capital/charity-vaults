@@ -3,29 +3,29 @@ pragma solidity ^0.8.6;
 
 import {MockERC20} from "solmate/test/utils/MockERC20.sol";
 
-import {Vault} from 'vaults/Vault.sol';
-import {VaultFactory} from 'vaults/VaultFactory.sol';
-import {MockStrategy} from 'vaults/test/mocks/MockStrategy.sol';
+import {Vault} from "vaults/Vault.sol";
+import {VaultFactory} from "vaults/VaultFactory.sol";
+import {MockStrategy} from "vaults/test/mocks/MockStrategy.sol";
 import {DSTestPlus} from "vaults/test/utils/DSTestPlus.sol";
 
 import {CharityVault} from "../CharityVault.sol";
 import {CharityVaultFactory} from "../CharityVaultFactory.sol";
 
 contract CharityVaultTest is DSTestPlus {
-    MockERC20 underlying;
-    
+    MockERC20 public underlying;
+
     /// @dev Vault Logic
-    Vault vault;
-    VaultFactory vaultFactory;
-    MockStrategy strategy1;
-    MockStrategy strategy2;
+    Vault public vault;
+    VaultFactory public vaultFactory;
+    MockStrategy public strategy1;
+    MockStrategy public strategy2;
 
     /// @dev CharityVault Logic
-    CharityVault cvault;
-    CharityVaultFactory cvaultFactory;
-    address payable immutable caddress = payable(address(0));
-    uint256 immutable cfeePercent = 10;
-    uint256 nonce = 1;
+    CharityVault public cvault;
+    CharityVaultFactory public cvaultFactory;
+    address payable public immutable caddress = payable(address(0));
+    uint256 public immutable cfeePercent = 10;
+    uint256 public nonce = 1;
 
     function setUp() public {
         underlying = new MockERC20("Mock Token", "TKN", 18);
@@ -36,11 +36,15 @@ contract CharityVaultTest is DSTestPlus {
         strategy2 = new MockStrategy(underlying);
 
         cvaultFactory = new CharityVaultFactory(address(vaultFactory));
-        cvault = cvaultFactory.deployCharityVault(underlying, caddress, cfeePercent);
+        cvault = cvaultFactory.deployCharityVault(
+            underlying,
+            caddress,
+            cfeePercent
+        );
     }
 
     /// @dev Constructing a lone CharityVault should fail from the Auth modifier in the CharityVault Constructor
-    function testFail_construct_lone_cv() public {
+    function testFailConstructCharityVault() public {
         MockERC20 _underlying = new MockERC20("Fail Mock Token", "FAIL", 18);
         Vault _vault = new VaultFactory().deployVault(_underlying);
 
@@ -49,22 +53,43 @@ contract CharityVaultTest is DSTestPlus {
     }
 
     /// @notice Tests to make sure the deployed ERC20 metadata is correct
-    function test_properly_init_erc20() public {
+    function testProperlyInitErc20() public {
         assertERC20Eq(cvault.UNDERLYING(), underlying);
-        assertEq(cvault.name(), string(abi.encodePacked("Rari ", underlying.name(), " Charity Vault")));
-        assertEq(cvault.symbol(), string(abi.encodePacked("rcv", underlying.symbol())));
+        assertEq(
+            cvault.name(),
+            string(
+                abi.encodePacked("Rari ", underlying.name(), " Charity Vault")
+            )
+        );
+        assertEq(
+            cvault.symbol(),
+            string(abi.encodePacked("rcv", underlying.symbol()))
+        );
     }
 
     /// @notice Tests if we can deploy a charity vault with valid fuzzed parameters
-    function test_deploy_charity_vault(address payable _address, uint256 _feePercent) public {
+    function testDeployCharityVault(
+        address payable _address,
+        uint256 _feePercent
+    ) public {
         uint256 validatedFeePercent = _feePercent;
-        if(_feePercent > 100 || _feePercent < 0) {
-            validatedFeePercent = uint256(keccak256(abi.encodePacked(block.timestamp, msg.sender, nonce))) % 100;
+        if (_feePercent > 100 || _feePercent < 0) {
+            validatedFeePercent =
+                uint256(
+                    keccak256(
+                        abi.encodePacked(block.timestamp, msg.sender, nonce)
+                    )
+                ) %
+                100;
             nonce++;
         }
 
-        CharityVault newVault = cvaultFactory.deployCharityVault(underlying, _address, validatedFeePercent);
-        
+        CharityVault newVault = cvaultFactory.deployCharityVault(
+            underlying,
+            _address,
+            validatedFeePercent
+        );
+
         // Assert our CharityVault parameters are equal
         assertTrue(address(newVault).code.length > 0);
         assertEq(_address, newVault.CHARITY());
@@ -73,47 +98,120 @@ contract CharityVaultTest is DSTestPlus {
     }
 
     /// @notice Tests if deployment fails for invalid parameters
-    function testFail_deploy_charity_vault(address payable _address, uint256 _feePercent) public {
+    function testFailDeployCharityVault(
+        address payable _address,
+        uint256 _feePercent
+    ) public {
         uint256 validatedFeePercent = _feePercent;
-        if(_feePercent <= 100 || _feePercent >= 0) {
-            validatedFeePercent = uint256(keccak256(abi.encodePacked(block.timestamp, msg.sender, nonce))) + 101;
+        if (_feePercent <= 100 || _feePercent >= 0) {
+            validatedFeePercent =
+                uint256(
+                    keccak256(
+                        abi.encodePacked(block.timestamp, msg.sender, nonce)
+                    )
+                ) +
+                101;
             nonce++;
         }
 
         // this should fail
-        cvaultFactory.deployCharityVault(underlying, _address, validatedFeePercent);
+        cvaultFactory.deployCharityVault(
+            underlying,
+            _address,
+            validatedFeePercent
+        );
     }
 
-    // function test_charity_vault_deposit_functions_properly(uint256 amount) public {
-    //     // Validate fuzzing value
-    //     if (amount > type(uint256).max / 1e36) return;
+    /*///////////////////////////////////////////////////////////////
+                    BASIC DEPOSIT/WITHDRAWAL TESTS
+    //////////////////////////////////////////////////////////////*/
 
-    //     // Mint underlying tokens to deposit into the vault.
-    //     underlying.mint(self, amount);
+    /// @notice Tests depositing and withdrawing into the Charity Vault
+    function testAtomicDepositWithdraw() public {
+        underlying.mint(address(this), 1e18);
+        underlying.approve(address(cvault), 1e18);
 
-    //     // Approve underlying tokens.
-    //     underlying.approve(address(cvault), amount);
+        // Track balance prior to deposit
+        uint256 preDepositBal = underlying.balanceOf(address(this));
+        cvault.deposit(1e18);
 
-    //     // Deposit
-    //     cvault.deposit(amount, underlying);
+        // After a successfull Charity Vault Deposit,
+        // the vault should contain the amount underlying token
+        assertEq(vault.exchangeRate(), vault.BASE_UNIT());
+        assertEq(vault.totalHoldings(), 1e18);
+        assertEq(vault.totalFloat(), 1e18);
+        assertEq(underlying.balanceOf(address(this)), preDepositBal - 1e18);
 
-    //     // TODO: Check to make sure CharityVaults has a mapping for user deposit -> CharityDeposit { charity_rate, charity(variable enum?), amount }
-    // }
+        // The vault should have no balance for this depositor
+        assertEq(vault.balanceOf(address(this)), 0);
 
-    // function test_vcharity_ault_withdraw_functions_properly(uint256 amount) public {
-    //     // If the number is too large we can't test with it.
-    //     if (amount > (type(uint256).max / 1e37) || amount == 0) return;
+        // The vault should have mapped the underlying token to the cvault
+        assertEq(vault.balanceOfUnderlying(address(cvault)), 1e18);
 
-    //     // Mint, approve, and deposit tokens into the vault.
-    //     test_charity_vault_deposit_functions_properly(amount);
+        // The user should be minted rcvTokens 1:1 to the underlying token
+        assertEq(cvault.balanceOf(address(this)), 1e18);
 
-    //     // Can withdraw full balance from the vault.
-    //     cvault.withdraw(amount, underlying);
+        cvault.withdraw(1e18);
 
-    //     // fvTokens are set to 0.
-    //     assertEq(cvault.getVaultBalance(self, underlying), 0);
-    //     assertEq(underlying.balanceOf(self), amount);
+        // Vault Balances
+        assertEq(vault.exchangeRate(), vault.BASE_UNIT());
+        assertEq(vault.totalStrategyHoldings(), 0);
+        assertEq(vault.totalHoldings(), 0);
+        assertEq(vault.totalFloat(), 0);
+        assertEq(vault.balanceOf(address(this)), 0);
+        assertEq(vault.balanceOfUnderlying(address(this)), 0);
 
-    //     // TODO: Check to make sure withdraw deleted the CharityVaults mapping for user deposit -> CharityDeposit { charity_rate, charity(variable enum?), amount }
-    // }
+        // The vault should have no underlying balance for the Charity Vault
+        assertEq(vault.balanceOfUnderlying(address(cvault)), 0);
+        assertEq(vault.balanceOf(address(cvault)), 0);
+
+        // The Charity Vault should now have no rcvTokens for the Depositor
+        assertEq(cvault.balanceOf(address(this)), 0);
+
+        // Depositor Balances
+        assertEq(underlying.balanceOf(address(this)), preDepositBal);
+    }
+
+    /*///////////////////////////////////////////////////////////////
+                    DEPOSIT/WITHDRAWAL SANITY CHECK TESTS
+    //////////////////////////////////////////////////////////////*/
+
+    /// @notice Test Charity Withdrawal from CharityVault
+    function testCharityVaultWithdrawal() public {
+        cvault.withdrawInterestToCharity();
+    }
+
+    /// @notice Test that we cannot deposit more than the approved amount of underlying
+    function testFailDepositWithNotEnoughApproval() public {
+        underlying.mint(address(this), 0.5e18);
+        underlying.approve(address(cvault), 0.5e18);
+
+        cvault.deposit(1e18);
+    }
+
+    function testFailWithdrawWithNotEnoughBalance() public {
+        underlying.mint(address(this), 0.5e18);
+        underlying.approve(address(cvault), 0.5e18);
+
+        cvault.deposit(0.5e18);
+
+        cvault.withdraw(1e18);
+    }
+
+
+    function testFailWithdrawWithNoBalance() public {
+        cvault.withdraw(1e18);
+    }
+
+    function testFailDepositWithNoApproval() public {
+        cvault.deposit(1e18);
+    }
+
+    function testFailWithdrawZero() public {
+        cvault.withdraw(0);
+    }
+
+    function testFailDepositZero() public {
+        cvault.deposit(0);
+    }
 }

@@ -1,21 +1,39 @@
 {
-  "name": "@rari-capital/charity-vaults",
-  "version": "1.0.0",
-  "description": "Share interest from Fuse Vaults with charities, friends, and more.",
-  "files": [
-    "src/**/*.sol"
-  ],
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/Rari-Capital/charity-vaults.git"
-  },
-  "scripts": {
-    "lint": "prettier --write src/**/*.sol",
-    "visualize": "surya graph -s src/**/*.sol | dot -Tpng > assets/contracts.png"
-  },
-  "devDependencies": {
-    "prettier": "^2.3.1",
-    "prettier-plugin-solidity": "^1.0.0-beta.13",
-    "surya": "^0.4.3"
-  }
+    "name": "@rari-capital/charity-vaults",
+    "version": "1.0.0",
+    "authors": [
+        "Andreas Bigger <andreas@nascent.xyz>"
+    ],
+    "license": "AGPL-3.0-only",
+    "description": "Share interest from Fuse Vaults with charities, friends, and more.",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/Rari-Capital/charity-vaults.git"
+    },
+    "files": [
+        "*.sol"
+    ],
+    "scripts": {
+        "prepublishOnly": "copyfiles -u 1 \"./src/**/*.sol\" --exclude \"./src/test/**/*.sol\" ./",
+        "postpublish": "rimraf ./*.sol",
+        "prepack": "yarn prepublishOnly",
+        "postpack": "yarn postpublish",
+        "lint": "yarn prettier && yarn solhint",
+        "lint:check": "yarn prettier:check && yarn solhint:check",
+        "prettier": "yarn prettier:check --write",
+        "prettier:check": "prettier --check \"src/**/*.sol\" && prettier --check \"src/*.sol\"",
+        "prettier:write": "prettier -w .",
+        "solhint": "yarn solhint:check --fix",
+        "solhint:check": "solhint --config ./.solhint.json \"src/**/*.sol\"",
+        "visualize": "surya graph -s src/**/*.sol | dot -Tpng > assets/contracts.png"
+    },
+    "devDependencies": {
+        "copyfiles": "^2.4.1",
+        "prettier": "^2.4.1",
+        "prettier-plugin-solidity": "^1.0.0-beta.18",
+        "rimraf": "^3.0.2",
+        "solhint": "^3.3.6",
+        "solhint-plugin-prettier": "^0.0.5",
+        "surya": "^0.4.3"
+    }
 }

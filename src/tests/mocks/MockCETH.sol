@@ -50,7 +50,7 @@ contract MockWETH is ERC20("Mock WETH", "mWETH", 18) {
     }
 
     function withdraw(uint256 wad) public {
-        require(balanceOf[msg.sender] >= wad);
+        require(balanceOf[msg.sender] >= wad, "User's balance too small!");
         balanceOf[msg.sender] -= wad;
         payable(msg.sender).transfer(wad);
     }
