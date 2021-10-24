@@ -89,21 +89,23 @@ ETH_FROM=xxxx ETH_RPC_URL=xxxx ETH_GAS=xxxx dapp verify-contract src/Vault.sol:V
 
 NOTE: we have to pass in the address of USDC (0x5ffbac75efc9547fbc822166fed19b05cd5890bb) since it is an argument in the Vault constructor
 
-
 Deployed & Verified [CharityVaultFactory](https://goerli.etherscan.io/address/0x293e3a98cc905e759edb07d579fa2cdb24941575): `0x293e3a98CC905e759EDB07d579fa2Cdb24941575`
 
 Using the `deployCharityVault` function we can then deploy a CharityVault with the parameters:
-- *underlying*: `0x5ffbac75efc9547fbc822166fed19b05cd5890bb` (USDC)
-- *charity*: `0x05AB381A007A90E541433f3DC574AcD3E389f898` (random address interest is sent to)
-- *feePercent*: `5` (fee percent - 5%)
-Deployed & Verified [CharityVault for USDC Vault](https://goerli.etherscan.io/address/0xdb5c97dfadcd4928b8c4f6e9a7766d93b6788acb): `0xdb5c97dfadcd4928b8c4f6e9a7766d93b6788acb`
+
+-   _underlying_: `0x5ffbac75efc9547fbc822166fed19b05cd5890bb` (USDC)
+-   _charity_: `0x05AB381A007A90E541433f3DC574AcD3E389f898` (random address interest is sent to)
+-   _feePercent_: `5` (fee percent - 5%)
+    Deployed & Verified [CharityVault for USDC Vault](https://goerli.etherscan.io/address/0xdb5c97dfadcd4928b8c4f6e9a7766d93b6788acb): `0xdb5c97dfadcd4928b8c4f6e9a7766d93b6788acb`
 
 For reference, used the command:
+
 ```sh
 dapp verify-contract src/CharityVault.sol:CharityVault 0xdb5c97dfadcd4928b8c4f6e9a7766d93b6788acb 0x5ffbac75efc9547fbc822166fed19b05cd5890bb 0x05AB381A007A90E541433f3DC574AcD3E389f898 5 0x256Df578846117A15106F1F0e99155afF5E76d66
 ```
 
 Where the synatx is:
+
 ```
 dapp verify-contract src/CharityVault.sol:CharityVault <deployed charity vault address> <underlying token address (USDC)> <charity address> <fee percent> <deployed vault address>
 ```
@@ -111,7 +113,7 @@ dapp verify-contract src/CharityVault.sol:CharityVault <deployed charity vault a
 #### Execute
 
 ```
-ETH_FROM=0xf25e32C0f2928F198912A4F21008aF146Af8A05a make deploy-goerli 
+ETH_FROM=0xf25e32C0f2928F198912A4F21008aF146Af8A05a make deploy-goerli
 ```
 
 ### Custom Network
@@ -221,3 +223,11 @@ Prettier outputs `[warn] Code style issues found in the above file(s). Forgot to
 Unknown command `jq`
 
 -   Run a `brew install jq`
+
+# License
+
+[GNU Affero GPL v3.0](https://github.com/Anish-Agnihotri/MultiRaffle/blob/master/LICENSE)
+
+# Disclaimer
+
+_These smart contracts are being provided as is. No guarantee, representation or warranty is being made, express or implied, as to the safety or correctness of the user interface or the smart contracts. They have not been audited and as such there can be no assurance they will work as intended, and users may experience delays, failures, errors, omissions, loss of transmitted information or loss of funds. Rari Capital is not liable for any of the foregoing. Users should proceed with caution and use at their own risk._
