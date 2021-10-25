@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity ^0.8.6;
+pragma solidity ^0.8.9;
 
-import {MockERC20} from "solmate/test/utils/MockERC20.sol";
+import {MockERC20} from "solmate/test/utils/mocks/MockERC20.sol";
 
 import {Vault} from "vaults/Vault.sol";
 import {VaultFactory} from "vaults/VaultFactory.sol";
@@ -41,6 +41,9 @@ contract CharityVaultTest is DSTestPlus {
             caddress,
             cfeePercent
         );
+
+        // ** Set cvault as authorizaed
+        vault.setAuthority(cvault.authority());
     }
 
     /// @dev Constructing a lone CharityVault should fail from the Auth modifier in the CharityVault Constructor
@@ -130,6 +133,9 @@ contract CharityVaultTest is DSTestPlus {
     function testAtomicDepositWithdraw() public {
         underlying.mint(address(this), 1e18);
         underlying.approve(address(cvault), 1e18);
+        underlying.approve(address(vault), 1e18);
+        cvault.approve(address(vault), 1e18);
+        vault.approve(address(cvault), 1e18);
 
         // Track balance prior to deposit
         uint256 preDepositBal = underlying.balanceOf(address(this));
@@ -137,7 +143,7 @@ contract CharityVaultTest is DSTestPlus {
 
         // After a successfull Charity Vault Deposit,
         // the vault should contain the amount underlying token
-        assertEq(vault.exchangeRate(), vault.BASE_UNIT());
+        assertEq(vault.exchangeRate(), 10**vault.decimals());
         assertEq(vault.totalHoldings(), 1e18);
         assertEq(vault.totalFloat(), 1e18);
         assertEq(underlying.balanceOf(address(this)), preDepositBal - 1e18);
@@ -154,7 +160,7 @@ contract CharityVaultTest is DSTestPlus {
         cvault.withdraw(1e18);
 
         // Vault Balances
-        assertEq(vault.exchangeRate(), vault.BASE_UNIT());
+        assertEq(vault.exchangeRate(), 10**vault.decimals());
         assertEq(vault.totalStrategyHoldings(), 0);
         assertEq(vault.totalHoldings(), 0);
         assertEq(vault.totalFloat(), 0);

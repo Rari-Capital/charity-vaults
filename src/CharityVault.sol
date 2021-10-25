@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity 0.8.6;
+pragma solidity ^0.8.9;
 
 import {ERC20} from "solmate/erc20/ERC20.sol";
 import {Auth} from "solmate/auth/Auth.sol";
@@ -84,8 +84,8 @@ contract CharityVault is ERC20, Auth {
             _UNDERLYING.decimals()
         )
         Auth(
-            // Set the CharityVault's owner to the CharityVaultFactory's owner:
-            CharityVaultFactory(msg.sender).owner()
+            // Sets the CharityVault's owner, authority to the CharityVaultFactory's owner, authority
+            CharityVaultFactory(msg.sender).owner(), CharityVaultFactory(msg.sender).authority()
         )
     {
         // Enforce BASE_FEE
@@ -100,9 +100,7 @@ contract CharityVault is ERC20, Auth {
         BASE_FEE = _BASE_FEE;
         VAULT = _VAULT;
 
-        // TODO: Once we upgrade to 0.8.9 we can use 10**decimals
-        // instead which will save us an external call and SLOAD.
-        BASE_UNIT = 10**_UNDERLYING.decimals();
+        BASE_UNIT = 10**decimals;
     }
 
     /*///////////////////////////////////////////////////////////////
@@ -190,7 +188,8 @@ contract CharityVault is ERC20, Auth {
                 this.balanceOf(user)) / totalSupply) / 100;
         uint256 rcvTokensToUser = underlyingToUser.fdiv(
             pricePerShareNow,
-            VAULT.BASE_UNIT()
+            // recalculate decimals to navigate around BASE_UNIT being internal
+            10**VAULT.decimals()
         );
 
         return rcvTokensToUser;
@@ -241,7 +240,8 @@ contract CharityVault is ERC20, Auth {
                 BASE_FEE) / 100;
         uint256 rvTokensToCharity = underlyingToCharity.fdiv(
             pricePerShareNow,
-            VAULT.BASE_UNIT()
+            // recalculate decimals to navigate around BASE_UNIT being internal
+            10**VAULT.decimals()
         );
         pricePerShareAtLastExtraction = pricePerShareNow;
         rvTokensEarnedByCharity += rvTokensToCharity;

@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity ^0.8.6;
+pragma solidity ^0.8.9;
 
 /* solhint-disable func-name-mixedcase */
 
-import {MockERC20} from "solmate/test/utils/MockERC20.sol";
+import {MockERC20} from "solmate/test/utils/mocks/MockERC20.sol";
 
 import {DSTestPlus} from "./utils/DSTestPlus.sol";
 import {CharityVaultFactory} from "../CharityVaultFactory.sol";

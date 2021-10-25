@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity ^0.8.6;
+pragma solidity ^0.8.9;
 
-import {Auth} from "solmate/auth/Auth.sol";
+import {Auth, Authority} from "solmate/auth/Auth.sol";
 import {ERC20} from "solmate/erc20/ERC20.sol";
 import {Bytes32AddressLib} from "solmate/utils/Bytes32AddressLib.sol";
 import {VaultFactory} from "vaults/VaultFactory.sol";
@@ -11,7 +11,7 @@ import {CharityVault} from "./CharityVault.sol";
 /// @title Fuse Charity Vault Factory
 /// @author Transmissions11, JetJadeja, Andreas Bigger
 /// @notice Charity wrapper for vaults/VaultFactory.
-contract CharityVaultFactory is Auth(msg.sender) {
+contract CharityVaultFactory is Auth(msg.sender, Authority(address(0))) {
     using Bytes32AddressLib for *;
 
     /// @dev we need to store a vaultFactory to fetch existing Vaults
