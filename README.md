@@ -73,35 +73,42 @@ ETH_FROM=0x3538b6eF447f244268BCb2A0E1796fEE7c45002D make deploy-rinkeby
 
 #### Pre-deploys
 
-VaultFactory was deployed to `0x8b5842a935731ed1b92e3211a7f38bebd185eb53` on [Goerli](https://goerli.etherscan.io/address/0x8b5842a935731ed1b92e3211a7f38bebd185eb53) using the following command in the [vaults](./lib/vaults) subdir:
+VaultFactory was deployed to `0x52e8122587465641c34b302ffba9c8d0f807fd6b` on [Goerli](https://goerli.etherscan.io/address/0x52e8122587465641c34b302ffba9c8d0f807fd6b) using the following command in the [vaults](./lib/vaults) subdir:
+
+```sh
+ETH_FROM=xxxx ETH_RPC_URL=xxxx ETH_GAS=xxxx dapp create ./src/VaultFactory.sol:VaultFactory --verify
+```
+
+Then verified with:
 
 ```
-ETH_FROM=xxxx ETH_RPC_URL=xxxx ETH_GAS=xxxx dapp create VaultFactory --verify
+ETH_FROM=xxxx ETH_RPC_URL=xxxx ETH_GAS=xxxx dapp verify-contract ./src/VaultFactory.sol:VaultFactory 0x52e8122587465641c34b302ffba9c8d0f807fd6b
 ```
 
-A Vault for [Goerli USDC](https://goerli.etherscan.io/token/0x5ffbac75efc9547fbc822166fed19b05cd5890bb) (`0x5ffbac75efc9547fbc822166fed19b05cd5890bb`) Vault was deployed to `0x256Df578846117A15106F1F0e99155afF5E76d66` using the `deployVault` permissionless function in the `VaultFactory` on [Goerli Etherscan](https://goerli.etherscan.io/address/0x256Df578846117A15106F1F0e99155afF5E76d66).
+A Vault for a Goerli [Mock USDC](https://goerli.etherscan.io/address/0xf7b42ce168be377083aeb1c890925ab69847c993) (`0xf7b42ce168be377083aeb1c890925ab69847c993`) Vault was deployed to `0x0279005E56E56f6f406853B6ec03E4BEbbb4a610` using the `deployVault` permissionless function in the `VaultFactory` on [Goerli Etherscan](https://goerli.etherscan.io/address/0x0279005E56E56f6f406853B6ec03E4BEbbb4a610).
 
 Since we can't pass the `--verify` flag, we have to verify the Vault contract using dapptools `verify-contract` command as such.
 
 ```
-ETH_FROM=xxxx ETH_RPC_URL=xxxx ETH_GAS=xxxx dapp verify-contract src/Vault.sol:Vault 0x256Df578846117A15106F1F0e99155afF5E76d66 0x5ffbac75efc9547fbc822166fed19b05cd5890bb
+ETH_FROM=xxxx ETH_RPC_URL=xxxx ETH_GAS=xxxx dapp verify-contract src/Vault.sol:Vault 0x0279005E56E56f6f406853B6ec03E4BEbbb4a610 0xf7b42ce168be377083aeb1c890925ab69847c993
 ```
 
-NOTE: we have to pass in the address of USDC (0x5ffbac75efc9547fbc822166fed19b05cd5890bb) since it is an argument in the Vault constructor
+NOTE: we have to pass in the address of the mock USDC (0xf7b42ce168be377083aeb1c890925ab69847c993) since it is an argument in the Vault constructor
 
-Deployed & Verified [CharityVaultFactory](https://goerli.etherscan.io/address/0x293e3a98cc905e759edb07d579fa2cdb24941575): `0x293e3a98CC905e759EDB07d579fa2Cdb24941575`
+Deployed & Verified [CharityVaultFactory](https://goerli.etherscan.io/address/0x2a0b356d73c4a4090c1b5ef8209f8961dd53a02d): `0x2a0b356d73c4a4090c1b5ef8209f8961dd53a02d`
 
 Using the `deployCharityVault` function we can then deploy a CharityVault with the parameters:
 
--   _underlying_: `0x5ffbac75efc9547fbc822166fed19b05cd5890bb` (USDC)
+-   _underlying_: `0xf7b42ce168be377083aeb1c890925ab69847c993` (USDC)
 -   _charity_: `0x05AB381A007A90E541433f3DC574AcD3E389f898` (random address interest is sent to)
 -   _feePercent_: `5` (fee percent - 5%)
-    Deployed & Verified [CharityVault for USDC Vault](https://goerli.etherscan.io/address/0xdb5c97dfadcd4928b8c4f6e9a7766d93b6788acb): `0xdb5c97dfadcd4928b8c4f6e9a7766d93b6788acb`
 
-For reference, used the command:
+Deployed & Verified [CharityVault for USDC Vault](https://goerli.etherscan.io/address/0xC20d03A133aE3Ef8199A49E496e21Ae4E16D3204): `0xC20d03A133aE3Ef8199A49E496e21Ae4E16D3204`
+
+To verify the CharityVault, we run the command:
 
 ```sh
-dapp verify-contract src/CharityVault.sol:CharityVault 0xdb5c97dfadcd4928b8c4f6e9a7766d93b6788acb 0x5ffbac75efc9547fbc822166fed19b05cd5890bb 0x05AB381A007A90E541433f3DC574AcD3E389f898 5 0x256Df578846117A15106F1F0e99155afF5E76d66
+dapp verify-contract src/CharityVault.sol:CharityVault 0xC20d03A133aE3Ef8199A49E496e21Ae4E16D3204 0xf7b42ce168be377083aeb1c890925ab69847c993 0x05AB381A007A90E541433f3DC574AcD3E389f898 5 0x0279005E56E56f6f406853B6ec03E4BEbbb4a610
 ```
 
 Where the synatx is:

@@ -2,7 +2,7 @@
 pragma solidity ^0.8.9;
 
 import {Auth, Authority} from "solmate/auth/Auth.sol";
-import {ERC20} from "solmate/erc20/ERC20.sol";
+import {ERC20} from "solmate/tokens/ERC20.sol";
 import {Bytes32AddressLib} from "solmate/utils/Bytes32AddressLib.sol";
 import {VaultFactory} from "vaults/VaultFactory.sol";
 

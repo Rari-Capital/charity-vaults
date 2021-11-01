@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.9;
 
-import {ERC20} from "solmate/erc20/ERC20.sol";
 import {Auth} from "solmate/auth/Auth.sol";
-import {SafeERC20} from "solmate/erc20/SafeERC20.sol";
+import {ERC20} from "solmate/tokens/ERC20.sol";
+import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
 import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 import {Vault} from "vaults/Vault.sol";
 
@@ -15,7 +15,7 @@ import {CharityVaultFactory} from "./CharityVaultFactory.sol";
 /// their underlying asset to instantly begin earning yield
 /// where a percent of the earned interest is sent to charity.
 contract CharityVault is ERC20, Auth {
-    using SafeERC20 for ERC20;
+    using SafeTransferLib for ERC20;
     using FixedPointMathLib for uint256;
 
     /*///////////////////////////////////////////////////////////////
