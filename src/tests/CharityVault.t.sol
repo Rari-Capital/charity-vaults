@@ -216,4 +216,167 @@ contract CharityVaultTest is DSTestPlus {
     function testFailDepositZero() public {
         cvault.deposit(0);
     }
+
+    /*///////////////////////////////////////////////////////////////
+                  BASIC STRATEGY DEPOSIT/WITHDRAWAL TESTS
+    //////////////////////////////////////////////////////////////*/
+
+    function testAtomicEnterExitSinglePool() public {
+        underlying.mint(address(this), 1e18);
+        underlying.approve(address(cvault), 1e18);
+
+        // Track balance prior to deposit
+        uint256 preDepositBal = underlying.balanceOf(address(this));
+        cvault.deposit(1e18);
+
+        // After a successfull Charity Vault Deposit,
+        // the vault should contain the amount underlying token
+        assertEq(vault.exchangeRate(), 10**vault.decimals());
+        assertEq(vault.totalHoldings(), 1e18);
+        assertEq(vault.totalFloat(), 1e18);
+        assertEq(underlying.balanceOf(address(this)), preDepositBal - 1e18);
+
+        // The vault should have no balance for this depositor
+        assertEq(vault.balanceOf(address(this)), 0);
+
+        // The vault should have mapped the underlying token to the cvault
+        assertEq(vault.balanceOfUnderlying(address(cvault)), 1e18);
+
+        // The user should be minted rcvTokens 1:1 to the underlying token
+        assertEq(cvault.balanceOf(address(this)), 1e18);
+
+        // Trust Strategy
+        vault.trustStrategy(strategy1);
+
+        // Deposit
+        vault.depositIntoStrategy(strategy1, 1e18);
+
+        // Sanity Vault Checks
+        assertEq(vault.exchangeRate(), 1e18);
+        assertEq(vault.totalStrategyHoldings(), 1e18);
+        assertEq(vault.totalHoldings(), 1e18);
+        assertEq(vault.totalFloat(), 0);
+
+        // Verify correct Vault and CVault Balances
+        assertEq(vault.balanceOf(address(this)), 0);
+        assertEq(vault.balanceOfUnderlying(address(cvault)), 1e18);
+        assertEq(cvault.balanceOf(address(this)), 1e18);
+
+        // Withdraw
+        vault.withdrawFromStrategy(strategy1, 0.5e18);
+
+        // Sanity Vault Checks
+        assertEq(vault.exchangeRate(), 1e18);
+        assertEq(vault.totalStrategyHoldings(), 0.5e18);
+        assertEq(vault.totalHoldings(), 1e18);
+        assertEq(vault.totalFloat(), 0.5e18);
+    
+        // Verify correct Vault and CVault Balances
+        assertEq(vault.balanceOf(address(this)), 0);
+        assertEq(vault.balanceOfUnderlying(address(cvault)), 1e18);
+        assertEq(cvault.balanceOf(address(this)), 1e18);
+
+        // Withdraw Again
+        vault.withdrawFromStrategy(strategy1, 0.5e18);
+
+        // Sanity Vault Checks
+        assertEq(vault.exchangeRate(), 1e18);
+        assertEq(vault.totalStrategyHoldings(), 0);
+        assertEq(vault.totalHoldings(), 1e18);
+        assertEq(vault.totalFloat(), 1e18);
+
+        // Verify correct Vault and CVault Balances
+        assertEq(vault.balanceOf(address(this)), 0);
+        assertEq(vault.balanceOfUnderlying(address(cvault)), 1e18);
+        assertEq(cvault.balanceOf(address(this)), 1e18);
+    }
+
+    // TODO: Test Multi Pool
+
+    function testAtomicEnterExitMultiPool() public {
+        underlying.mint(address(this), 1e18);
+        underlying.approve(address(cvault), 1e18);
+
+        // Track balance prior to deposit
+        uint256 preDepositBal = underlying.balanceOf(address(this));
+        cvault.deposit(1e18);
+
+        // After a successfull Charity Vault Deposit,
+        // the vault should contain the amount underlying token
+        assertEq(vault.exchangeRate(), 10**vault.decimals());
+        assertEq(vault.totalHoldings(), 1e18);
+        assertEq(vault.totalFloat(), 1e18);
+        assertEq(underlying.balanceOf(address(this)), preDepositBal - 1e18);
+
+        // The vault should have no balance for this depositor
+        assertEq(vault.balanceOf(address(this)), 0);
+
+        // The vault should have mapped the underlying token to the cvault
+        assertEq(vault.balanceOfUnderlying(address(cvault)), 1e18);
+
+        // The user should be minted rcvTokens 1:1 to the underlying token
+        assertEq(cvault.balanceOf(address(this)), 1e18);
+
+        // Trust Strategy
+        vault.trustStrategy(strategy1);
+
+        // Deposit only 0.5e18 into strategy 1
+        vault.depositIntoStrategy(strategy1, 0.5e18);
+
+        // Sanity Vault Checks
+        assertEq(vault.exchangeRate(), 1e18);
+        assertEq(vault.totalStrategyHoldings(), 0.5e18);
+        assertEq(vault.totalHoldings(), 1e18);
+        assertEq(vault.totalFloat(), 0.5e18);
+
+        // Verify correct Vault and CVault Balances
+        assertEq(vault.balanceOf(address(this)), 0);
+        assertEq(vault.balanceOfUnderlying(address(cvault)), 1e18);
+        assertEq(cvault.balanceOf(address(this)), 1e18);
+
+        // Trust the second strategy
+        vault.trustStrategy(strategy2);
+
+        // Deposit the other half of tokens into strategy 2
+        vault.depositIntoStrategy(strategy2, 0.5e18);
+        
+        // Sanity Vault Checks
+        assertEq(vault.exchangeRate(), 1e18);
+        assertEq(vault.totalStrategyHoldings(), 1e18);
+        assertEq(vault.totalHoldings(), 1e18);
+        assertEq(vault.totalFloat(), 0);
+
+        // Verify correct Vault and CVault Balances
+        assertEq(vault.balanceOf(address(this)), 0);
+        assertEq(vault.balanceOfUnderlying(address(cvault)), 1e18);
+        assertEq(cvault.balanceOf(address(this)), 1e18);
+
+        // Withdraw
+        vault.withdrawFromStrategy(strategy1, 0.5e18);
+
+        // Sanity Vault Checks
+        assertEq(vault.exchangeRate(), 1e18);
+        assertEq(vault.totalStrategyHoldings(), 0.5e18);
+        assertEq(vault.totalHoldings(), 1e18);
+        assertEq(vault.totalFloat(), 0.5e18);
+    
+        // Verify correct Vault and CVault Balances
+        assertEq(vault.balanceOf(address(this)), 0);
+        assertEq(vault.balanceOfUnderlying(address(cvault)), 1e18);
+        assertEq(cvault.balanceOf(address(this)), 1e18);
+
+        // Withdraw the second half
+        vault.withdrawFromStrategy(strategy2, 0.5e18);
+
+        // Sanity Vault Checks
+        assertEq(vault.exchangeRate(), 1e18);
+        assertEq(vault.totalStrategyHoldings(), 0);
+        assertEq(vault.totalHoldings(), 1e18);
+        assertEq(vault.totalFloat(), 1e18);
+
+        // Verify correct Vault and CVault Balances
+        assertEq(vault.balanceOf(address(this)), 0);
+        assertEq(vault.balanceOfUnderlying(address(cvault)), 1e18);
+        assertEq(cvault.balanceOf(address(this)), 1e18);
+    }
 }
