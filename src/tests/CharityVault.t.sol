@@ -270,7 +270,7 @@ contract CharityVaultTest is DSTestPlus {
         assertEq(vault.totalStrategyHoldings(), 0.5e18);
         assertEq(vault.totalHoldings(), 1e18);
         assertEq(vault.totalFloat(), 0.5e18);
-    
+
         // Verify correct Vault and CVault Balances
         assertEq(vault.balanceOf(address(this)), 0);
         assertEq(vault.balanceOfUnderlying(address(cvault)), 1e18);
@@ -339,7 +339,7 @@ contract CharityVaultTest is DSTestPlus {
 
         // Deposit the other half of tokens into strategy 2
         vault.depositIntoStrategy(strategy2, 0.5e18);
-        
+
         // Sanity Vault Checks
         assertEq(vault.exchangeRate(), 1e18);
         assertEq(vault.totalStrategyHoldings(), 1e18);
@@ -359,7 +359,7 @@ contract CharityVaultTest is DSTestPlus {
         assertEq(vault.totalStrategyHoldings(), 0.5e18);
         assertEq(vault.totalHoldings(), 1e18);
         assertEq(vault.totalFloat(), 0.5e18);
-    
+
         // Verify correct Vault and CVault Balances
         assertEq(vault.balanceOf(address(this)), 0);
         assertEq(vault.balanceOfUnderlying(address(cvault)), 1e18);
