@@ -147,6 +147,7 @@ contract CharityVault is ERC20, Auth {
         emit DepositCV(msg.sender, underlyingAmount);
 
         // Transfer in UNDERLYING tokens from the sender to the vault
+        UNDERLYING.safeApprove(address(VAULT), underlyingAmount);
         UNDERLYING.safeTransferFrom(
             msg.sender,
             address(this),
@@ -216,7 +217,9 @@ contract CharityVault is ERC20, Auth {
         require(rvTokensToUser >= withdrawalAmount, "INSUFFICIENT_FUNDS");
 
         // Try to transfer balance to msg.sender
-        VAULT.transfer(msg.sender, withdrawalAmount);
+        VAULT.withdraw(rvTokensToUser);
+        UNDERLYING.safeApprove(msg.sender, withdrawalAmount);
+        UNDERLYING.safeTransfer(msg.sender, withdrawalAmount);
     }
 
     /*///////////////////////////////////////////////////////////////

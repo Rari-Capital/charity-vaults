@@ -133,9 +133,6 @@ contract CharityVaultTest is DSTestPlus {
     function testAtomicDepositWithdraw() public {
         underlying.mint(address(this), 1e18);
         underlying.approve(address(cvault), 1e18);
-        underlying.approve(address(vault), 1e18);
-        cvault.approve(address(vault), 1e18);
-        vault.approve(address(cvault), 1e18);
 
         // Track balance prior to deposit
         uint256 preDepositBal = underlying.balanceOf(address(this));
