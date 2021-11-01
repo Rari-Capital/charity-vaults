@@ -85,7 +85,8 @@ contract CharityVault is ERC20, Auth {
         )
         Auth(
             // Sets the CharityVault's owner, authority to the CharityVaultFactory's owner, authority
-            CharityVaultFactory(msg.sender).owner(), CharityVaultFactory(msg.sender).authority()
+            CharityVaultFactory(msg.sender).owner(),
+            CharityVaultFactory(msg.sender).authority()
         )
     {
         // Enforce BASE_FEE
@@ -190,7 +191,8 @@ contract CharityVault is ERC20, Auth {
         uint256 proportionInterestEarnedByUser = (((underlyingEarnedByUsersSinceLastExtraction *
                 this.balanceOf(user)) / totalSupply) / 100);
 
-        uint256 underlyingToUser = proportionInterestEarnedByUser + this.balanceOf(user);
+        uint256 underlyingToUser = proportionInterestEarnedByUser +
+            this.balanceOf(user);
 
         uint256 rcvTokensToUser = underlyingToUser.fdiv(
             pricePerShareNow,
@@ -269,6 +271,9 @@ contract CharityVault is ERC20, Auth {
         // TODO: Optimize double SLOAD of totalSupply here?
         // Calculate the exchange rate by diving the total holdings by the rvToken supply.
         return
-            rcvTokensOwnedByUsersAtLastExtraction().fdiv(totalSupply, BASE_UNIT);
+            rcvTokensOwnedByUsersAtLastExtraction().fdiv(
+                totalSupply,
+                BASE_UNIT
+            );
     }
 }

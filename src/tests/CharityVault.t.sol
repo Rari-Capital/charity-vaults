@@ -201,7 +201,6 @@ contract CharityVaultTest is DSTestPlus {
         cvault.withdraw(1e18);
     }
 
-
     function testFailWithdrawWithNoBalance() public {
         cvault.withdraw(1e18);
     }
