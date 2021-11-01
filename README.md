@@ -31,11 +31,11 @@ Run `npm run visualize` to generate an amalgamated contract visualization in the
 
 ##### CharityVault.sol
 
-Run `surya graph -s src/CharityVault.sol | dot -Tpng > assets/CharityVault.png`
+Run `surya graph src/CharityVault.sol | dot -Tpng > assets/CharityVault.png`
 
 #### CharityVaultFactory.sol
 
-Run `surya graph -s src/CharityVaultFactory.sol | dot -Tpng > assets/CharityVaultFactory.png`
+Run `surya graph src/CharityVaultFactory.sol | dot -Tpng > assets/CharityVaultFactory.png`
 
 ## Deploying
 
