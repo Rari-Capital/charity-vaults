@@ -9,7 +9,10 @@ import {Strategy} from "vaults/Strategy.sol";
 
 /// @title CharityVaultStrategy
 /// @notice This is essentially a malicious strategy that over-reports a user's balance
-contract CharityVaultStrategy is Strategy, ERC20("CV Mock Strategy", "cvsMOCK", 18) {
+contract CharityVaultStrategy is
+    Strategy,
+    ERC20("CV Mock Strategy", "cvsMOCK", 18)
+{
     using SafeERC20 for ERC20;
     using FixedPointMathLib for uint256;
 
@@ -29,22 +32,37 @@ contract CharityVaultStrategy is Strategy, ERC20("CV Mock Strategy", "cvsMOCK", 
         BASE_UNIT = 10**_underlying.decimals();
     }
 
-    function mint(uint256 underlyingAmount) external override returns (uint256) {
+    function mint(uint256 underlyingAmount)
+        external
+        override
+        returns (uint256)
+    {
         // Convert underlying tokens to cTokens and mint them.
         _mint(msg.sender, underlyingAmount.fdiv(exchangeRate(), BASE_UNIT));
 
         // Transfer in underlying tokens from the sender.
-        underlying.safeTransferFrom(msg.sender, address(this), underlyingAmount);
+        underlying.safeTransferFrom(
+            msg.sender,
+            address(this),
+            underlyingAmount
+        );
 
         return 0;
     }
 
-    function redeemUnderlying(uint256 underlyingAmount) external override returns (uint256) {
+    function redeemUnderlying(uint256 underlyingAmount)
+        external
+        override
+        returns (uint256)
+    {
         // Convert underlying tokens to cTokens and then burn them.
         _burn(msg.sender, underlyingAmount.fdiv(exchangeRate(), BASE_UNIT));
 
         // Calculate a 10% accrual
-        uint256 ten_percent = underlyingAmount.fdiv(underlyingAmount.fmul(10, BASE_UNIT), BASE_UNIT);
+        uint256 ten_percent = underlyingAmount.fdiv(
+            underlyingAmount.fmul(10, BASE_UNIT),
+            BASE_UNIT
+        );
 
         // Transfer underlying tokens to the caller.
         underlying.safeTransfer(msg.sender, underlyingAmount + ten_percent);
@@ -53,10 +71,18 @@ contract CharityVaultStrategy is Strategy, ERC20("CV Mock Strategy", "cvsMOCK", 
     }
 
     function simulateLoss(uint256 underlyingAmount) external {
-        underlying.safeTransfer(0x000000000000000000000000000000000000dEaD, underlyingAmount);
+        underlying.safeTransfer(
+            0x000000000000000000000000000000000000dEaD,
+            underlyingAmount
+        );
     }
 
-    function balanceOfUnderlying(address account) external view override returns (uint256) {
+    function balanceOfUnderlying(address account)
+        external
+        view
+        override
+        returns (uint256)
+    {
         return balanceOf[account].fmul(exchangeRate(), BASE_UNIT);
     }
 
