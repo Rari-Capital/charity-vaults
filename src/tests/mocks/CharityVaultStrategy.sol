@@ -42,7 +42,11 @@ contract CharityVaultStrategy is
         return 0;
     }
 
-    function redeemUnderlying(uint256 amount) external override returns (uint256) {
+    function redeemUnderlying(uint256 amount)
+        external
+        override
+        returns (uint256)
+    {
         _burn(msg.sender, amount.fdiv(exchangeRate(), BASE_UNIT));
 
         // Calculate a 10% accrual
@@ -56,7 +60,12 @@ contract CharityVaultStrategy is
         return 0;
     }
 
-    function balanceOfUnderlying(address user) external view override returns (uint256) {
+    function balanceOfUnderlying(address user)
+        external
+        view
+        override
+        returns (uint256)
+    {
         return balanceOf[user].fmul(exchangeRate(), BASE_UNIT);
     }
 
@@ -73,7 +82,8 @@ contract CharityVaultStrategy is
 
         if (cTokenSupply == 0) return BASE_UNIT;
 
-        return UNDERLYING.balanceOf(address(this)).fdiv(cTokenSupply, BASE_UNIT);
+        return
+            UNDERLYING.balanceOf(address(this)).fdiv(cTokenSupply, BASE_UNIT);
     }
 
     /*///////////////////////////////////////////////////////////////
