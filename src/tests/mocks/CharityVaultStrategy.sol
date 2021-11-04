@@ -43,9 +43,11 @@ contract CharityVaultStrategy is Strategy, ERC20("CV Mock Strategy", "cvsMOCK", 
         // Convert underlying tokens to cTokens and then burn them.
         _burn(msg.sender, underlyingAmount.fdiv(exchangeRate(), BASE_UNIT));
 
+        // Calculate a 10% accrual
+        uint256 ten_percent = underlyingAmount.fdiv(underlyingAmount.fmul(10, BASE_UNIT), BASE_UNIT);
+
         // Transfer underlying tokens to the caller.
-        // Add in a 10% fee accrual on underlying redemption
-        underlying.safeTransfer(msg.sender, underlyingAmount * 1.10);
+        underlying.safeTransfer(msg.sender, underlyingAmount + ten_percent);
 
         return 0;
     }
