@@ -291,8 +291,6 @@ contract CharityVaultTest is DSTestPlus {
         assertEq(cvault.balanceOf(address(this)), 1e18);
     }
 
-    // TODO: Test Multi Pool
-
     function testAtomicEnterExitMultiPool() public {
         underlying.mint(address(this), 1e18);
         underlying.approve(address(cvault), 1e18);
