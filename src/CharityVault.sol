@@ -201,7 +201,9 @@ contract CharityVault is ERC20, Auth {
         );
 
         // Add the rvtokens earned plus additional calculated earnings, minus total claimed
-        return (rvTokensEarnedByCharity + rvTokensToCharity) - rvTokensClaimedByCharity;
+        return
+            (rvTokensEarnedByCharity + rvTokensToCharity) -
+            rvTokensClaimedByCharity;
     }
 
     /// @notice returns the rcvTokens owned by a user

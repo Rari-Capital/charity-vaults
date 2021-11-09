@@ -20,10 +20,10 @@ contract SimpleCharityVaultStrategy is
                            STRATEGY FUNCTIONS
     //////////////////////////////////////////////////////////////*/
 
-    constructor(ERC20 _UNDERLYING) {
-        UNDERLYING = _UNDERLYING;
+    constructor(ERC20 _underlying) {
+        UNDERLYING = _underlying;
 
-        BASE_UNIT = 10**_UNDERLYING.decimals();
+        BASE_UNIT = 10**_underlying.decimals();
     }
 
     function isCEther() external pure override returns (bool) {
@@ -67,8 +67,10 @@ contract SimpleCharityVaultStrategy is
                              INTERNAL LOGIC
     //////////////////////////////////////////////////////////////*/
 
+    // solhint-disable-next-line var-name-mixedcase
     ERC20 internal immutable UNDERLYING;
 
+    // solhint-disable-next-line var-name-mixedcase
     uint256 internal immutable BASE_UNIT;
 
     function exchangeRate() internal view returns (uint256) {

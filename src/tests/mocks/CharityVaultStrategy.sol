@@ -20,10 +20,10 @@ contract CharityVaultStrategy is
                            STRATEGY FUNCTIONS
     //////////////////////////////////////////////////////////////*/
 
-    constructor(ERC20 _UNDERLYING) {
-        UNDERLYING = _UNDERLYING;
+    constructor(ERC20 _underlying) {
+        UNDERLYING = _underlying;
 
-        BASE_UNIT = 10**_UNDERLYING.decimals();
+        BASE_UNIT = 10**_underlying.decimals();
     }
 
     function isCEther() external pure override returns (bool) {
@@ -50,12 +50,9 @@ contract CharityVaultStrategy is
         _burn(msg.sender, amount.fdiv(exchangeRate(), BASE_UNIT));
 
         // Calculate a 10% accrual
-        uint256 ten_percent = amount.fdiv(
-            amount.fmul(10, BASE_UNIT),
-            BASE_UNIT
-        );
+        uint256 tenPercent = amount.fdiv(amount.fmul(10, BASE_UNIT), BASE_UNIT);
 
-        UNDERLYING.safeTransfer(msg.sender, amount + ten_percent);
+        UNDERLYING.safeTransfer(msg.sender, amount + tenPercent);
 
         return 0;
     }
@@ -73,8 +70,10 @@ contract CharityVaultStrategy is
                              INTERNAL LOGIC
     //////////////////////////////////////////////////////////////*/
 
+    // solhint-disable-next-line var-name-mixedcase
     ERC20 internal immutable UNDERLYING;
 
+    // solhint-disable-next-line var-name-mixedcase
     uint256 internal immutable BASE_UNIT;
 
     function exchangeRate() internal view returns (uint256) {
