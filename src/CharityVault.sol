@@ -183,7 +183,6 @@ contract CharityVault is ERC20, Auth {
         uint256 pricePerShareNow = VAULT.exchangeRate();
 
         if (pricePerShareAtLastExtraction == 0) {
-            pricePerShareAtLastExtraction = pricePerShareNow;
             return 0;
         }
 
