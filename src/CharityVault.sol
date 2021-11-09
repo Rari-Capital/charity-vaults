@@ -26,7 +26,7 @@ contract CharityVault is ERC20, Auth {
     /// @dev which are not able to be overridden since that requires public virtual specifiers
     /// @dev immutable instead of constant so we can set VAULT in the constructor
     // solhint-disable-next-line var-name-mixedcase
-    Vault private immutable VAULT;
+    Vault public immutable VAULT;
 
     /// @notice The underlying token for the vault.
     /// @dev immutable instead of constant so we can set UNDERLYING in the constructor
@@ -176,6 +176,33 @@ contract CharityVault is ERC20, Auth {
             rvTokensClaimedByCharity;
         rvTokensClaimedByCharity = rvTokensEarnedByCharity;
         VAULT.transfer(CHARITY, rvTokensToClaim);
+    }
+
+    /// @dev Returns how much interest a charity has earned
+    function getRVTokensEarnedByCharity() public view returns (uint256) {
+        uint256 pricePerShareNow = VAULT.exchangeRate();
+
+        if (pricePerShareAtLastExtraction == 0) {
+            return 0;
+        }
+
+        uint256 underlyingEarnedByUsersSinceLastExtraction = (VAULT.balanceOf(
+            address(this)
+        ) - (rvTokensEarnedByCharity - rvTokensClaimedByCharity)) *
+            (pricePerShareNow - pricePerShareAtLastExtraction);
+
+        uint256 underlyingToCharity = (underlyingEarnedByUsersSinceLastExtraction *
+                BASE_FEE) / 100;
+        uint256 rvTokensToCharity = underlyingToCharity.fdiv(
+            pricePerShareNow,
+            // recalculate decimals to navigate around BASE_UNIT being internal
+            10**VAULT.decimals()
+        );
+
+        // Add the rvtokens earned plus additional calculated earnings, minus total claimed
+        return
+            (rvTokensEarnedByCharity + rvTokensToCharity) -
+            rvTokensClaimedByCharity;
     }
 
     /// @notice returns the rcvTokens owned by a user

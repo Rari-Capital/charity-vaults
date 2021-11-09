@@ -117,6 +117,8 @@ Where the synatx is:
 dapp verify-contract src/CharityVault.sol:CharityVault <deployed charity vault address> <underlying token address (USDC)> <charity address> <fee percent> <deployed vault address>
 ```
 
+**Deployed CharityVaultStrategy** at [0x4476ea9e25080f476f66aa5b14ddec3bb52177cb](https://goerli.etherscan.io/address/0x4476ea9e25080f476f66aa5b14ddec3bb52177cb#code)
+
 #### Execute
 
 ```
