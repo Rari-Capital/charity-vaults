@@ -267,9 +267,9 @@ contract CharityVault is ERC20, Auth {
         // Try to transfer balance to msg.sender
         VAULT.withdraw(rvTokensToUser);
         UNDERLYING.safeApprove(msg.sender, withdrawalAmount);
-        UNDERLYING.safeTransfer(msg.sender, withdrawalAmount)
+        UNDERLYING.safeTransfer(msg.sender, withdrawalAmount);
         
-        emit WithdrawCV(msg.sender, withdrawalAmount, VAULT.exchangeRate());;
+        emit WithdrawCV(msg.sender, withdrawalAmount, VAULT.exchangeRate());
     }
 
     /*///////////////////////////////////////////////////////////////
