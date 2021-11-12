@@ -7,10 +7,10 @@ import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 
 import {ERC20Strategy} from "vaults/interfaces/Strategy.sol";
 
-/// @title SimpleCharityVaultStrategy
+/// @title CharityVaultMockStrategy
 /// @notice This is essentially a malicious strategy that over-reports a user's balance
-contract SimpleCharityVaultStrategy is
-    ERC20("CV Simple Mock Strategy", "cvsSMOCK", 18),
+contract CharityVaultMockStrategy is
+    ERC20("CV Mock Strategy", "cvsMOCK", 18),
     ERC20Strategy
 {
     using SafeTransferLib for ERC20;
@@ -49,7 +49,13 @@ contract SimpleCharityVaultStrategy is
     {
         _burn(msg.sender, amount.fdiv(exchangeRate(), BASE_UNIT));
 
-        UNDERLYING.safeTransfer(msg.sender, amount + 1);
+        // !! ----------------------------------------- !! //
+        // !! Mock Interest by Manipulating totalSupply !! //
+        // !! ----------------------------------------- !! //
+        // UNDERLYING.mint(address(this), 0.5e18);
+        // !! ----------------------------------------- !! //
+
+        UNDERLYING.safeTransfer(msg.sender, amount);
 
         return 0;
     }

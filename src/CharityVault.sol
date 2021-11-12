@@ -171,11 +171,21 @@ contract CharityVault is ERC20, Auth {
 
     /// @dev Extracts and withdraws unclaimed interest earned by charity.
     function withdrawInterestToCharity() external {
+        /// EFFECTS
         extractInterestToCharity();
         uint256 rvTokensToClaim = rvTokensEarnedByCharity -
             rvTokensClaimedByCharity;
         rvTokensClaimedByCharity = rvTokensEarnedByCharity;
-        VAULT.transfer(CHARITY, rvTokensToClaim);
+
+        /// INTERACTIONS
+        if(rvTokensToClaim > 0) {
+            uint256 withdrawUnderlyingAmount = rvTokensToClaim.fmul(VAULT.exchangeRate(), BASE_UNIT);
+            VAULT.redeem(rvTokensToClaim);
+            UNDERLYING.safeApprove(CHARITY, withdrawUnderlyingAmount);
+            UNDERLYING.safeTransfer(CHARITY, withdrawUnderlyingAmount);
+        }
+
+        // VAULT.transfer(CHARITY, rvTokensToClaim);
     }
 
     /// @dev Returns how much interest a charity has earned
@@ -221,13 +231,13 @@ contract CharityVault is ERC20, Auth {
         uint256 underlyingToUser = proportionInterestEarnedByUser +
             this.balanceOf(user);
 
-        uint256 rcvTokensToUser = underlyingToUser.fdiv(
+        uint256 rvTokensToUser = underlyingToUser.fdiv(
             pricePerShareNow,
             // recalculate decimals to navigate around BASE_UNIT being internal
             10**VAULT.decimals()
         );
 
-        return rcvTokensToUser;
+        return rvTokensToUser;
     }
 
     /// @notice Withdraws a user's interest earned from the vault.
@@ -278,8 +288,7 @@ contract CharityVault is ERC20, Auth {
                 BASE_FEE) / 100;
         uint256 rvTokensToCharity = underlyingToCharity.fdiv(
             pricePerShareNow,
-            // recalculate decimals to navigate around BASE_UNIT being internal
-            10**VAULT.decimals()
+            VAULT.BASE_UNIT()
         );
 
         pricePerShareAtLastExtraction = pricePerShareNow;
