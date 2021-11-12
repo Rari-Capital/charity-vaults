@@ -1,15 +1,16 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.9;
 
+import {Authority} from "solmate/auth/Auth.sol";
 import {MockERC20} from "solmate/test/utils/mocks/MockERC20.sol";
 import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
 import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 
 import {Vault} from "vaults/Vault.sol";
 import {VaultFactory} from "vaults/VaultFactory.sol";
-import {MockStrategy} from "vaults/test/mocks/MockStrategy.sol";
-import {DSTestPlus} from "vaults/test/utils/DSTestPlus.sol";
+import {MockERC20Strategy} from "vaults/test/mocks/MockERC20Strategy.sol";
 
+import {DSTestPlus} from "./utils/DSTestPlus.sol";
 import {CharityVaultMockStrategy} from "./mocks/CharityVaultMockStrategy.sol";
 import {CharityVault} from "../CharityVault.sol";
 import {CharityVaultFactory} from "../CharityVaultFactory.sol";
@@ -22,8 +23,8 @@ contract CharityVaultTest is DSTestPlus {
     /// @dev Vault Logic
     Vault public vault;
     VaultFactory public vaultFactory;
-    MockStrategy public strategy1;
-    MockStrategy public strategy2;
+    MockERC20Strategy public strategy1;
+    MockERC20Strategy public strategy2;
     CharityVaultMockStrategy public cvStrategy;
 
     /// @dev CharityVault Logic
@@ -39,7 +40,7 @@ contract CharityVaultTest is DSTestPlus {
 
     function setUp() public {
         underlying = new MockERC20("Mock Token", "TKN", 18);
-        vaultFactory = new VaultFactory();
+        vaultFactory = new VaultFactory(address(this), Authority(address(0)));
         vault = vaultFactory.deployVault(underlying);
 
         vault.setFeePercent(0.1e18);
@@ -49,12 +50,14 @@ contract CharityVaultTest is DSTestPlus {
 
         vault.initialize();
 
-        strategy1 = new MockStrategy(underlying);
-        strategy2 = new MockStrategy(underlying);
+        strategy1 = new MockERC20Strategy(underlying);
+        strategy2 = new MockERC20Strategy(underlying);
         cvStrategy = new CharityVaultMockStrategy(underlying);
 
         // Create a mock strategy to act as the charity //
-        MockStrategy mockCharity = new MockStrategy(new MockERC20("Random Token", "RNDM", 18));
+        MockERC20Strategy mockCharity = new MockERC20Strategy(
+            new MockERC20("Random Token", "RNDM", 18)
+        );
         caddress = payable(address(mockCharity));
 
         cvaultFactory = new CharityVaultFactory(address(vaultFactory));
@@ -71,7 +74,8 @@ contract CharityVaultTest is DSTestPlus {
     /// @dev Constructing a lone CharityVault should fail from the Auth modifier in the CharityVault Constructor
     function testFailConstructCharityVault() public {
         MockERC20 _underlying = new MockERC20("Fail Mock Token", "FAIL", 18);
-        Vault _vault = new VaultFactory().deployVault(_underlying);
+        Vault _vault = new VaultFactory(address(this), Authority(address(0)))
+            .deployVault(_underlying);
 
         // this should fail
         new CharityVault(_underlying, caddress, cfeePercent, _vault);
@@ -407,7 +411,7 @@ contract CharityVaultTest is DSTestPlus {
     function testProfitableStrategy() public {
         underlying.mint(address(this), 1.5e18);
         underlying.approve(address(cvault), 1e18);
-        
+
         // Track balance prior to deposit
         uint256 preDepositBal = underlying.balanceOf(address(this));
         cvault.deposit(1e18);
@@ -465,7 +469,6 @@ contract CharityVaultTest is DSTestPlus {
         assertEq(vault.balanceOfUnderlying(address(cvault)), 1e18);
         assertEq(cvault.balanceOf(address(this)), 1e18);
 
-
         // ------------------------------------------- //
 
         // Harvest will mint the strategy 0.5e18 underlying tokens //
@@ -501,7 +504,10 @@ contract CharityVaultTest is DSTestPlus {
 
         // Verify correct Vault and CVault Balances
         assertEq(vault.balanceOf(address(this)), 0);
-        assertEq(vault.balanceOfUnderlying(address(cvault)), 1214285714285714285);
+        assertEq(
+            vault.balanceOfUnderlying(address(cvault)),
+            1214285714285714285
+        );
         assertEq(cvault.balanceOf(address(this)), 1e18);
 
         // ------------------------------------------- //
@@ -517,10 +523,13 @@ contract CharityVaultTest is DSTestPlus {
         assertEq(vault.balanceOf(address(vault)), 0.05e18);
         assertEq(vault.totalSupply(), 1.05e18);
         assertEq(vault.balanceOfUnderlying(address(vault)), 71428571428571428);
-    
+
         // Verify correct Vault and CVault Balances
         assertEq(vault.balanceOf(address(this)), 0);
-        assertEq(vault.balanceOfUnderlying(address(cvault)), 1428571428571428571);
+        assertEq(
+            vault.balanceOfUnderlying(address(cvault)),
+            1428571428571428571
+        );
         assertEq(cvault.balanceOf(address(this)), 1e18);
 
         // ------------------------------------------- //
@@ -532,7 +541,10 @@ contract CharityVaultTest is DSTestPlus {
 
         // Try to extract interest to charity //
         cvault.withdrawInterestToCharity();
-        assertEq(underlying.balanceOf(caddress), earnings.fdiv(cfeePercent, BASE_UNIT));
+        assertEq(
+            underlying.balanceOf(caddress),
+            earnings.fdiv(cfeePercent, BASE_UNIT)
+        );
 
         // Remove 10% from underlying balance //
         // cvault.withdraw(earnings.fmul(9, BASE_UNIT).fdiv(10, BASE_UNIT));
@@ -557,7 +569,7 @@ contract CharityVaultTest is DSTestPlus {
     function testProfitableStrategyMultipleCharityWithdraws() public {
         underlying.mint(address(this), 1.5e18);
         underlying.approve(address(cvault), 1e18);
-        
+
         // Track balance prior to deposit
         uint256 preDepositBal = underlying.balanceOf(address(this));
         cvault.deposit(1e18);
@@ -665,8 +677,11 @@ contract CharityVaultTest is DSTestPlus {
         assertEq(vault.balanceOfUnderlying(address(vault)), 60714285714285714);
 
         // Verify correct Vault and CVault Balances
-        assertEq(vault.balanceOf(address(this)), 0);
-        assertEq(vault.balanceOfUnderlying(address(cvault)), 1214285714285714285);
+        assertEq(vault.balanceOf(address(this)), 0); // 17647058823529411716262975778546712
+        assertEq(
+            vault.balanceOfUnderlying(address(cvault)),
+            1214285714285714285
+        );
         assertEq(cvault.balanceOf(address(this)), 1e18);
 
         // ------------------------------------------- //
@@ -688,15 +703,15 @@ contract CharityVaultTest is DSTestPlus {
         assertEq(vault.balanceOf(address(vault)), 0.05e18);
         assertEq(vault.totalSupply(), 1.05e18);
         assertEq(vault.balanceOfUnderlying(address(vault)), 71428571428571428);
-    
+
         // Verify correct Vault and CVault Balances
         assertEq(vault.balanceOf(address(this)), 0);
-        assertEq(vault.balanceOfUnderlying(address(cvault)), 1428571428571428571);
+        assertEq(
+            vault.balanceOfUnderlying(address(cvault)),
+            1428571428571428571
+        );
         assertEq(cvault.balanceOf(address(this)), 1e18);
 
         // ------------------------------------------- //
-
-
-
     }
 }
