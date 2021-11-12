@@ -32,6 +32,13 @@ contract CharityVaultTest is DSTestPlus {
         vaultFactory = new VaultFactory();
         vault = vaultFactory.deployVault(underlying);
 
+        vault.setFeePercent(0.1e18);
+        vault.setHarvestDelay(6 hours);
+        vault.setHarvestWindow(5 minutes);
+        vault.setTargetFloatPercent(0.01e18);
+
+        vault.initialize();
+
         strategy1 = new MockStrategy(underlying);
         strategy2 = new MockStrategy(underlying);
 
