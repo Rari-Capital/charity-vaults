@@ -3,13 +3,15 @@ pragma solidity ^0.8.9;
 
 /* solhint-disable func-name-mixedcase */
 
+import {Authority} from "solmate/auth/Auth.sol";
 import {MockERC20} from "solmate/test/utils/mocks/MockERC20.sol";
+
+import {VaultFactory} from "vaults/VaultFactory.sol";
+import {Vault} from "vaults/Vault.sol";
 
 import {DSTestPlus} from "./utils/DSTestPlus.sol";
 import {CharityVaultFactory} from "../CharityVaultFactory.sol";
 import {CharityVault} from "../CharityVault.sol";
-import {VaultFactory} from "vaults/VaultFactory.sol";
-import {Vault} from "vaults/Vault.sol";
 
 contract CharityVaultFactoryTest is DSTestPlus {
     CharityVaultFactory public factory;
@@ -21,7 +23,7 @@ contract CharityVaultFactoryTest is DSTestPlus {
 
     function setUp() public {
         underlying = new MockERC20("Mock Token", "TKN", 18);
-        vaultFactory = new VaultFactory();
+        vaultFactory = new VaultFactory(address(this), Authority(address(0)));
         factory = new CharityVaultFactory(address(vaultFactory));
     }
 
