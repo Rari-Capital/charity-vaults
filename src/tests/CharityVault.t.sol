@@ -210,6 +210,24 @@ contract CharityVaultTest is DSTestPlus {
         cvault.withdrawInterestToCharity();
     }
 
+    /// @notice Test Charity Withdrawal from CharityVault with a Deposit
+    function testCharityVaultWithdrawalWithDeposit() public {
+        // Deposit to inflate the totalSupply of the Vault
+        underlying.mint(address(this), 1e18);
+        underlying.approve(address(cvault), 1e18);
+        cvault.deposit(1e18);
+
+        // Sanity Checks
+        assertEq(vault.exchangeRate(), 10**vault.decimals());
+        assertEq(vault.totalHoldings(), 1e18);
+        assertEq(vault.totalFloat(), 1e18);
+        assertEq(vault.totalSupply(), 1e18);
+        assertEq(cvault.totalSupply(), 1e18);
+
+        // Now Withdraw
+        cvault.withdrawInterestToCharity();
+    }
+
     /// @notice Test that we cannot deposit more than the approved amount of underlying
     function testFailDepositWithNotEnoughApproval() public {
         underlying.mint(address(this), 0.5e18);
@@ -408,7 +426,38 @@ contract CharityVaultTest is DSTestPlus {
                          Successful Interest
     //////////////////////////////////////////////////////////////*/
 
-    function testProfitableStrategy() public {
+    function testProfitableStrategySmolNumba() public {
+        uint256 initial_amount = 10;
+
+        underlying.mint(address(this), initial_amount);
+        underlying.approve(address(cvault), initial_amount);
+
+        // Track balance prior to deposit
+        uint256 preDepositBal = underlying.balanceOf(address(this));
+        cvault.deposit(initial_amount);
+
+        // Deposit into Strategy
+        vault.trustStrategy(cvStrategy);
+        vault.depositIntoStrategy(cvStrategy, initial_amount);
+        vault.pushToWithdrawalQueue(cvStrategy);
+
+        // Mock Earned Interest By Transfering Underlying to the Charity Vault Strategy
+        underlying.mint(address(cvStrategy), initial_amount / 2);
+
+        // Harvest will mint the strategy (initial_amount / 2) underlying tokens //
+        vault.harvest(cvStrategy);
+
+        // Make sure the harvest delay is checked //
+        hevm.warp(block.timestamp + (vault.harvestDelay() / 2));
+
+        // Jump to after the harvest delay //
+        hevm.warp(block.timestamp + vault.harvestDelay());
+
+        // Finally, withdraw //
+        cvault.withdraw(10);
+    }
+
+    function _testProfitableStrategy() public {
         underlying.mint(address(this), 1.5e18);
         underlying.approve(address(cvault), 1e18);
 
@@ -537,7 +586,7 @@ contract CharityVaultTest is DSTestPlus {
         uint256 earnings = 1428571428571428571;
 
         // Finally, withdraw //
-        // cvault.withdraw(0.9e18);
+        cvault.withdraw(0.9e18);
 
         // Try to extract interest to charity //
         cvault.withdrawInterestToCharity();
@@ -566,7 +615,7 @@ contract CharityVaultTest is DSTestPlus {
         // assertEq(cvault.balanceOf(address(this)), 0);
     }
 
-    function testProfitableStrategyMultipleCharityWithdraws() public {
+    function _testProfitableStrategyMultipleCharityWithdraws() public {
         underlying.mint(address(this), 1.5e18);
         underlying.approve(address(cvault), 1e18);
 

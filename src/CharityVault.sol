@@ -192,6 +192,8 @@ contract CharityVault is ERC20, Auth {
             rvTokensClaimedByCharity;
         rvTokensClaimedByCharity = rvTokensEarnedByCharity;
 
+        require(rvTokensToClaim <= VAULT.totalSupply(), "INSUFFICIENT_RV_TOKEN_SUPPLY");
+
         /// INTERACTIONS
         if (rvTokensToClaim > 0) {
             uint256 withdrawUnderlyingAmount = rvTokensToClaim.fmul(
@@ -228,8 +230,7 @@ contract CharityVault is ERC20, Auth {
                 BASE_FEE) / 100;
         uint256 rvTokensToCharity = underlyingToCharity.fdiv(
             pricePerShareNow,
-            // recalculate decimals to navigate around BASE_UNIT being internal
-            10**VAULT.decimals()
+            VAULT.BASE_UNIT()
         );
 
         // Add the rvtokens earned plus additional calculated earnings, minus total claimed
@@ -242,10 +243,15 @@ contract CharityVault is ERC20, Auth {
     function rvTokensOwnedByUser(address user) public view returns (uint256) {
         uint256 pricePerShareNow = VAULT.exchangeRate();
 
+        // uint256 underlyingEarnedByUsersSinceLastExtraction = (VAULT.balanceOf(
+        //     address(this)
+        // ) - (rvTokensEarnedByCharity - rvTokensClaimedByCharity)) *
+        //     (pricePerShareNow - pricePerShareAtLastExtraction);
+        
         uint256 underlyingEarnedByUsersSinceLastExtraction = (VAULT.balanceOf(
-            address(this)
-        ) - (rvTokensEarnedByCharity - rvTokensClaimedByCharity)) *
-            (pricePerShareNow - pricePerShareAtLastExtraction);
+                address(this)
+            ) - (rvTokensEarnedByCharity - rvTokensClaimedByCharity))
+            .fmul((pricePerShareNow - pricePerShareAtLastExtraction), BASE_UNIT);
 
         // Get the proportion of total interest earned for a user
         uint256 proportionInterestEarnedByUser = (((underlyingEarnedByUsersSinceLastExtraction *
@@ -256,8 +262,7 @@ contract CharityVault is ERC20, Auth {
 
         uint256 rvTokensToUser = underlyingToUser.fdiv(
             pricePerShareNow,
-            // recalculate decimals to navigate around BASE_UNIT being internal
-            10**VAULT.decimals()
+            VAULT.BASE_UNIT()
         );
 
         return rvTokensToUser;
@@ -274,13 +279,17 @@ contract CharityVault is ERC20, Auth {
 
         uint256 rvTokensToUser = rvTokensOwnedByUser(msg.sender);
 
-        require(rvTokensToUser >= withdrawalAmount, "INSUFFICIENT_FUNDS");
+        // require(rvTokensToUser >= 5, "INSUFFICIENT_FUNDS");
 
         // Determine the equivalent amount of rcvTokens and burn them.
+        uint256 withdrawRCVTokens = withdrawalAmount.fdiv(VAULT.exchangeRate(), BASE_UNIT);
+
+        require(withdrawRCVTokens < rvTokensOwnedByUser)
+
         // This will revert if the user does not have enough rcvTokens.
         _burn(
             msg.sender,
-            withdrawalAmount.fdiv(VAULT.exchangeRate(), BASE_UNIT)
+            withdrawRCVTokens
         );
 
         // Try to transfer balance to msg.sender
@@ -305,9 +314,9 @@ contract CharityVault is ERC20, Auth {
         }
 
         uint256 underlyingEarnedByUsersSinceLastExtraction = (VAULT.balanceOf(
-            address(this)
-        ) - (rvTokensEarnedByCharity - rvTokensClaimedByCharity)) *
-            (pricePerShareNow - pricePerShareAtLastExtraction);
+                address(this)
+            ) - (rvTokensEarnedByCharity - rvTokensClaimedByCharity))
+            .fmul((pricePerShareNow - pricePerShareAtLastExtraction), BASE_UNIT);
 
         uint256 underlyingToCharity = (underlyingEarnedByUsersSinceLastExtraction *
                 BASE_FEE) / 100;
@@ -337,4 +346,11 @@ contract CharityVault is ERC20, Auth {
                 BASE_UNIT
             );
     }
+
+    /*///////////////////////////////////////////////////////////////
+                          RECIEVE ETHER LOGIC
+    //////////////////////////////////////////////////////////////*/
+
+    /// @dev Required for the CharityVault to receive unwrapped ETH.
+    receive() external payable {}
 }
