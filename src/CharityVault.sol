@@ -184,14 +184,26 @@ contract CharityVault is ERC20, Auth {
         VAULT.deposit(underlyingAmount);
     }
 
-    // Returns the total holdings of rvTokens at the time of the last extraction.
-    function rcvTokensOwnedByUsersAtLastExtraction()
-        internal
+    /// @notice Returns the total holdings of rvTokens at the time of the last extraction.
+    function rvTokensOwnedByUsersAtLastExtraction()
+        public
         view
         returns (uint256)
     {
         return (VAULT.balanceOf(address(this)) -
             (rvTokensEarnedByCharity - rvTokensClaimedByCharity));
+    }
+
+    /// @notice Calculates the amount of underlying tokens earned by all whole vault since last extraction
+    /// @param pricePerShareNow The vault exchange rate
+    /// @return The amount of underlying earned by the vault since the last extraction as a uint256
+    function underlyingEarnedSinceLastExtraction(uint256 pricePerShareNow)
+        public
+        view
+        returns (uint256)
+    {
+        return rvTokensOwnedByUsersAtLastExtraction() *
+            (pricePerShareNow - pricePerShareAtLastExtraction);
     }
 
     /// @dev Extracts and withdraws unclaimed interest earned by charity.
@@ -234,12 +246,7 @@ contract CharityVault is ERC20, Auth {
             return 0;
         }
 
-        uint256 underlyingEarnedByUsersSinceLastExtraction = (VAULT.balanceOf(
-            address(this)
-        ) - (rvTokensEarnedByCharity - rvTokensClaimedByCharity)) *
-            (pricePerShareNow - pricePerShareAtLastExtraction);
-
-        uint256 underlyingToCharity = (underlyingEarnedByUsersSinceLastExtraction *
+        uint256 underlyingToCharity = (underlyingEarnedSinceLastExtraction(pricePerShareNow) *
                 BASE_FEE) / 100;
         uint256 rvTokensToCharity = underlyingToCharity.fdiv(
             pricePerShareNow,
@@ -271,19 +278,14 @@ contract CharityVault is ERC20, Auth {
         return rvTokensToUser;
     }
 
-    /// @notice get the amount of rvTokens earned by user
-    /// @param user the address of the user to get earned interest for
-    /// @return the amount of earned interest as a uint256
+    /// @notice Calculates the amount of rvTokens earned by user as a proportion of the whole vault
+    /// @param user The address of the user to get earned interest for
+    /// @return The amount of earned interest as a uint256
     function rvTokensEarnedByUser(address user) public view returns (uint256) {
         uint256 pricePerShareNow = VAULT.exchangeRate();
 
-        uint256 underlyingEarnedByUsersSinceLastExtraction = (VAULT.balanceOf(
-            address(this)
-        ) - (rvTokensEarnedByCharity - rvTokensClaimedByCharity)) *
-            (pricePerShareNow - pricePerShareAtLastExtraction);
-
         // Get the proportion of total interest earned for a user
-        uint256 proportionInterestEarnedByUser = (((underlyingEarnedByUsersSinceLastExtraction *
+        uint256 proportionInterestEarnedByUser = (((underlyingEarnedSinceLastExtraction(pricePerShareNow) *
                 this.balanceOf(user)) / totalSupply) / 100);
 
         return proportionInterestEarnedByUser;
@@ -305,7 +307,7 @@ contract CharityVault is ERC20, Auth {
         // Calculatooor
         uint256 amountRvTokensOwnedByUser = rvTokensOwnedByUser(msg.sender);
         uint256 amountRvTokensToWithdraw = withdrawalAmount.fdiv(vault_er, BASE_UNIT);
-        uint256 amountRcvTokensToWithdraw = amountRvTokensToWithdraw.fdiv(cvault_er, BASE_UNIT)
+        uint256 amountRcvTokensToWithdraw = amountRvTokensToWithdraw.fdiv(cvault_er, BASE_UNIT);
 
         // This will revert if the user does not have enough rcvTokens.
         _burn(
@@ -362,7 +364,7 @@ contract CharityVault is ERC20, Auth {
         // TODO: Optimize double SLOAD of totalSupply here?
         // Calculate the exchange rate by diving the total holdings by the rvToken supply.
         return
-            rcvTokensOwnedByUsersAtLastExtraction().fdiv(
+            rvTokensOwnedByUsersAtLastExtraction().fdiv(
                 totalSupply,
                 BASE_UNIT
             );

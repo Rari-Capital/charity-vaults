@@ -434,7 +434,8 @@ contract CharityVaultTest is DSTestPlus {
 
         // Track balance prior to deposit
         uint256 preDepositBal = underlying.balanceOf(address(this));
-        cvault.deposit(initial_amount);
+        cvault.deposit(initial_amount / 2);
+        cvault.deposit(initial_amount / 2);
 
         // Deposit into Strategy
         vault.trustStrategy(cvStrategy);
