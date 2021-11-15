@@ -36,6 +36,7 @@ contract CharityVaultTest is DSTestPlus {
     uint256 public nonce = 1;
 
     /// @dev BASE_UNIT variable used in the contract
+    // solhint-disable-next-line var-name-mixedcase
     uint256 public immutable BASE_UNIT = 10**18;
 
     function setUp() public {
@@ -427,13 +428,13 @@ contract CharityVaultTest is DSTestPlus {
     //////////////////////////////////////////////////////////////*/
 
     function testProfitableStrategySmolNumba() public {
+        // solhint-disable-next-line var-name-mixedcase
         uint256 initial_amount = 10;
 
         underlying.mint(address(this), initial_amount);
         underlying.approve(address(cvault), initial_amount);
 
         // Track balance prior to deposit
-        uint256 preDepositBal = underlying.balanceOf(address(this));
         cvault.deposit(initial_amount / 2);
         cvault.deposit(initial_amount / 2);
 
@@ -593,6 +594,7 @@ contract CharityVaultTest is DSTestPlus {
         cvault.withdrawInterestToCharity();
         assertEq(
             underlying.balanceOf(caddress),
+            // @solhint-disable-next-line var-name-mixedcase
             earnings.fdiv(cfeePercent, BASE_UNIT)
         );
 

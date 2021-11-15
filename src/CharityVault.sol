@@ -158,19 +158,13 @@ contract CharityVault is ERC20, Auth {
         extractInterestToCharity();
 
         // Fix exchange rates
-        uint256 vault_er = VAULT.exchangeRate();
-        uint256 cvault_er = rcvRvExchangeRateAtLastExtraction();
+        uint256 vaultEr = VAULT.exchangeRate();
+        uint256 cVaultEr = rcvRvExchangeRateAtLastExtraction();
 
         // Determine the equivalent amount of rvTokens that will be minted to this charity vault.
-        uint256 rvTokensToMint = underlyingAmount.fdiv(
-            vault_er,
-            BASE_UNIT
-        );
-        _mint(
-            msg.sender,
-            rvTokensToMint.fdiv(cvault_er, BASE_UNIT)
-        );
-        emit DepositCV(msg.sender, underlyingAmount, vault_er, cvault_er);
+        uint256 rvTokensToMint = underlyingAmount.fdiv(vaultEr, BASE_UNIT);
+        _mint(msg.sender, rvTokensToMint.fdiv(cVaultEr, BASE_UNIT));
+        emit DepositCV(msg.sender, underlyingAmount, vaultEr, cVaultEr);
 
         // Transfer in UNDERLYING tokens from the sender to the vault
         UNDERLYING.safeApprove(address(VAULT), underlyingAmount);
@@ -185,6 +179,7 @@ contract CharityVault is ERC20, Auth {
     }
 
     /// @notice Returns the total holdings of rvTokens at the time of the last extraction.
+    /// @return The amount of rvTokens owned by the vault at the last extraction as a uint256
     function rvTokensOwnedByUsersAtLastExtraction()
         public
         view
@@ -202,7 +197,8 @@ contract CharityVault is ERC20, Auth {
         view
         returns (uint256)
     {
-        return rvTokensOwnedByUsersAtLastExtraction() *
+        return
+            rvTokensOwnedByUsersAtLastExtraction() *
             (pricePerShareNow - pricePerShareAtLastExtraction);
     }
 
@@ -214,16 +210,19 @@ contract CharityVault is ERC20, Auth {
             rvTokensClaimedByCharity;
         rvTokensClaimedByCharity = rvTokensEarnedByCharity;
 
-        require(rvTokensToClaim <= VAULT.totalSupply(), "INSUFFICIENT_RV_TOKEN_SUPPLY");
+        require(
+            rvTokensToClaim <= VAULT.totalSupply(),
+            "INSUFFICIENT_RV_TOKEN_SUPPLY"
+        );
 
         // Fix exchange rates
-        uint256 vault_er = VAULT.exchangeRate();
-        uint256 cvault_er = rcvRvExchangeRateAtLastExtraction();
+        uint256 vaultEr = VAULT.exchangeRate();
+        uint256 cVaultEr = rcvRvExchangeRateAtLastExtraction();
 
         /// INTERACTIONS
         if (rvTokensToClaim > 0) {
             uint256 withdrawUnderlyingAmount = rvTokensToClaim.fmul(
-                vault_er,
+                vaultEr,
                 BASE_UNIT
             );
             VAULT.redeem(rvTokensToClaim);
@@ -232,8 +231,8 @@ contract CharityVault is ERC20, Auth {
             emit CharityWithdrawCV(
                 msg.sender,
                 withdrawUnderlyingAmount,
-                vault_er,
-                cvault_er
+                vaultEr,
+                cVaultEr
             );
         }
     }
@@ -246,8 +245,9 @@ contract CharityVault is ERC20, Auth {
             return 0;
         }
 
-        uint256 underlyingToCharity = (underlyingEarnedSinceLastExtraction(pricePerShareNow) *
-                BASE_FEE) / 100;
+        uint256 underlyingToCharity = (underlyingEarnedSinceLastExtraction(
+            pricePerShareNow
+        ) * BASE_FEE) / 100;
         uint256 rvTokensToCharity = underlyingToCharity.fdiv(
             pricePerShareNow,
             VAULT.BASE_UNIT()
@@ -285,8 +285,9 @@ contract CharityVault is ERC20, Auth {
         uint256 pricePerShareNow = VAULT.exchangeRate();
 
         // Get the proportion of total interest earned for a user
-        uint256 proportionInterestEarnedByUser = (((underlyingEarnedSinceLastExtraction(pricePerShareNow) *
-                this.balanceOf(user)) / totalSupply) / 100);
+        uint256 proportionInterestEarnedByUser = (((underlyingEarnedSinceLastExtraction(
+                pricePerShareNow
+            ) * this.balanceOf(user)) / totalSupply) / 100);
 
         return proportionInterestEarnedByUser;
     }
@@ -301,26 +302,29 @@ contract CharityVault is ERC20, Auth {
         extractInterestToCharity();
 
         // Fix Exchange Rates
-        uint256 vault_er = VAULT.exchangeRate();
-        uint256 cvault_er = rcvRvExchangeRateAtLastExtraction();
+        uint256 vaultEr = VAULT.exchangeRate();
+        uint256 cVaultEr = rcvRvExchangeRateAtLastExtraction();
 
         // Calculatooor
-        uint256 amountRvTokensOwnedByUser = rvTokensOwnedByUser(msg.sender);
-        uint256 amountRvTokensToWithdraw = withdrawalAmount.fdiv(vault_er, BASE_UNIT);
-        uint256 amountRcvTokensToWithdraw = amountRvTokensToWithdraw.fdiv(cvault_er, BASE_UNIT);
+        // uint256 _amountRvTokensOwnedByUser = rvTokensOwnedByUser(msg.sender);
+        uint256 amountRvTokensToWithdraw = withdrawalAmount.fdiv(
+            vaultEr,
+            BASE_UNIT
+        );
+        uint256 amountRcvTokensToWithdraw = amountRvTokensToWithdraw.fdiv(
+            cVaultEr,
+            BASE_UNIT
+        );
 
         // This will revert if the user does not have enough rcvTokens.
-        _burn(
-            msg.sender,
-            amountRcvTokensToWithdraw
-        );
+        _burn(msg.sender, amountRcvTokensToWithdraw);
 
         // Try to transfer balance to msg.sender
         VAULT.withdraw(amountRvTokensToWithdraw);
         UNDERLYING.safeApprove(msg.sender, withdrawalAmount);
         UNDERLYING.safeTransfer(msg.sender, withdrawalAmount);
 
-        emit WithdrawCV(msg.sender, withdrawalAmount, vault_er, cvault_er);
+        emit WithdrawCV(msg.sender, withdrawalAmount, vaultEr, cVaultEr);
     }
 
     /*///////////////////////////////////////////////////////////////
@@ -336,13 +340,9 @@ contract CharityVault is ERC20, Auth {
             return;
         }
 
-        uint256 underlyingEarnedByUsersSinceLastExtraction = (VAULT.balanceOf(
-                address(this)
-            ) - (rvTokensEarnedByCharity - rvTokensClaimedByCharity))
-            * (pricePerShareNow - pricePerShareAtLastExtraction);
-
-        uint256 underlyingToCharity = (underlyingEarnedByUsersSinceLastExtraction *
-                BASE_FEE) / 100;
+        uint256 underlyingToCharity = (underlyingEarnedSinceLastExtraction(
+            pricePerShareNow
+        ) * BASE_FEE) / 100;
         uint256 rvTokensToCharity = underlyingToCharity.fdiv(
             pricePerShareNow,
             VAULT.BASE_UNIT()
@@ -364,10 +364,7 @@ contract CharityVault is ERC20, Auth {
         // TODO: Optimize double SLOAD of totalSupply here?
         // Calculate the exchange rate by diving the total holdings by the rvToken supply.
         return
-            rvTokensOwnedByUsersAtLastExtraction().fdiv(
-                totalSupply,
-                BASE_UNIT
-            );
+            rvTokensOwnedByUsersAtLastExtraction().fdiv(totalSupply, BASE_UNIT);
     }
 
     /*///////////////////////////////////////////////////////////////
@@ -375,5 +372,6 @@ contract CharityVault is ERC20, Auth {
     //////////////////////////////////////////////////////////////*/
 
     /// @dev Required for the CharityVault to receive unwrapped ETH.
+    // solhint-disable-next-line no-empty-blocks
     receive() external payable {}
 }
