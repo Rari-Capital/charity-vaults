@@ -202,6 +202,106 @@ contract CharityVaultTest is DSTestPlus {
         assertEq(underlying.balanceOf(address(this)), preDepositBal);
     }
 
+    /// @notice Tests all parameters after a deposit
+    /// @param userBalance A fuzzed input for the amount the user deposits
+    function testDepositParams(uint256 userBalance) public {
+        // Skip test if the deposit is greater than the max uint256
+        if (userBalance > 1e18 || userBalance == 0) {
+            return;
+        }
+
+        underlying.mint(address(this), userBalance);
+        underlying.approve(address(cvault), userBalance);
+
+        // Initially the exchange rate should be the BASE_UNIT
+        assertEq(cvault.rcvRvExchangeRateAtLastExtraction(), BASE_UNIT);
+
+        // Track balance prior to deposit
+        uint256 preDepositBal = underlying.balanceOf(address(this));
+        cvault.deposit(userBalance);
+
+        // After a successfull Charity Vault Deposit,
+        // the vault should contain the amount underlying token
+        assertEq(vault.exchangeRate(), BASE_UNIT);
+        assertEq(vault.totalHoldings(), userBalance);
+        assertEq(vault.totalFloat(), userBalance);
+        assertEq(underlying.balanceOf(address(this)), preDepositBal - userBalance);
+
+        // The vault should have no balance for this depositor
+        assertEq(vault.balanceOf(address(this)), 0);
+
+        // The vault should have mapped the underlying token to the cvault
+        assertEq(vault.balanceOfUnderlying(address(cvault)), userBalance);
+
+        // The user should be minted rcvTokens 1:1 to the underlying token
+        assertEq(cvault.balanceOf(address(this)), userBalance);
+
+        // After a deposit, the exchange rate should be the rvTokens owned
+        // by users at last extraction divided by the total supply.
+        assertEq(cvault.rcvRvExchangeRateAtLastExtraction(), BASE_UNIT);
+
+        // The rvTokens owned by user should be 1:1 with rcvTokens
+        assertEq(cvault.rvTokensOwnedByUser(address(this)), userBalance);
+
+        // The user should not have earned anything yet
+        assertEq(cvault.rvTokensEarnedByUser(address(this)), 0);
+
+        // The charity should not have earned anything yet either
+        assertEq(cvault.getRVTokensEarnedByCharity(), 0);
+    }
+
+    /// @notice Tests Deposit params with static inputs
+    function testDepositParamsStatic() public {
+        testDepositParams(100);
+    }
+
+    /// @notice Tests depositing and withdrawing into the Charity Vault with Small numbers
+    /// @param userBalance A fuzzed input for the amount the user deposits
+    function testAtomicDepositWithdrawSmallNumbers(uint256 userBalance) public {
+        underlying.mint(address(this), userBalance);
+        underlying.approve(address(cvault), userBalance);
+
+        // Track balance prior to deposit
+        uint256 preDepositBal = underlying.balanceOf(address(this));
+        cvault.deposit(userBalance);
+
+        // After a successfull Charity Vault Deposit,
+        // the vault should contain the amount underlying token
+        assertEq(vault.exchangeRate(), BASE_UNIT);
+        assertEq(vault.totalHoldings(), userBalance);
+        assertEq(vault.totalFloat(), userBalance);
+        assertEq(underlying.balanceOf(address(this)), preDepositBal - userBalance);
+
+        // The vault should have no balance for this depositor
+        assertEq(vault.balanceOf(address(this)), 0);
+
+        // The vault should have mapped the underlying token to the cvault
+        assertEq(vault.balanceOfUnderlying(address(cvault)), userBalance);
+
+        // The user should be minted rcvTokens 1:1 to the underlying token
+        assertEq(cvault.balanceOf(address(this)), userBalance);
+
+        cvault.withdraw(userBalance);
+
+        // Vault Balances
+        assertEq(vault.exchangeRate(), BASE_UNIT);
+        assertEq(vault.totalStrategyHoldings(), 0);
+        assertEq(vault.totalHoldings(), 0);
+        assertEq(vault.totalFloat(), 0);
+        assertEq(vault.balanceOf(address(this)), 0);
+        assertEq(vault.balanceOfUnderlying(address(this)), 0);
+
+        // The vault should have no underlying balance for the Charity Vault
+        assertEq(vault.balanceOfUnderlying(address(cvault)), 0);
+        assertEq(vault.balanceOf(address(cvault)), 0);
+
+        // The Charity Vault should now have no rcvTokens for the Depositor
+        assertEq(cvault.balanceOf(address(this)), 0);
+
+        // Depositor Balances
+        assertEq(underlying.balanceOf(address(this)), preDepositBal);
+    }
+
     /*///////////////////////////////////////////////////////////////
                     DEPOSIT/WITHDRAWAL SANITY CHECK TESTS
     //////////////////////////////////////////////////////////////*/
