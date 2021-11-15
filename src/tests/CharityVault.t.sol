@@ -250,9 +250,73 @@ contract CharityVaultTest is DSTestPlus {
         assertEq(cvault.getRVTokensEarnedByCharity(), 0);
     }
 
-    /// @notice Tests Deposit params with static inputs
+    /// @notice Tests Deposit params with a static input
     function testDepositParamsStatic() public {
         testDepositParams(100);
+    }
+
+    /// @notice Tests depositing twice
+    /// @param userBalance A fuzzed input for the amount the user deposits
+    function testMultiDeposits(uint256 userBalance) public {
+        // Skip test if the deposit is greater than the max uint256
+        if (userBalance > 1e18 || userBalance == 0) {
+            return;
+        }
+
+        underlying.mint(address(this), userBalance);
+        underlying.approve(address(cvault), userBalance);
+
+        // Initially the exchange rate should be the BASE_UNIT
+        assertEq(cvault.rcvRvExchangeRateAtLastExtraction(), BASE_UNIT);
+
+        // Track balance prior to deposit
+        uint256 preDepositBal = underlying.balanceOf(address(this));
+        cvault.deposit(userBalance);
+
+        // Vault Sanity Checks
+        assertEq(vault.exchangeRate(), BASE_UNIT);
+        assertEq(vault.totalHoldings(), userBalance);
+        assertEq(vault.totalFloat(), userBalance);
+        assertEq(underlying.balanceOf(address(this)), preDepositBal - userBalance);
+        assertEq(vault.balanceOf(address(this)), 0);
+        assertEq(vault.balanceOfUnderlying(address(cvault)), userBalance);
+
+        // The user should be minted rcvTokens 1:1 to the underlying token
+        assertEq(cvault.balanceOf(address(this)), userBalance);
+
+        // After a deposit, the exchange rate should be the rvTokens owned
+        // by users at last extraction divided by the total supply.
+        assertEq(cvault.rcvRvExchangeRateAtLastExtraction(), BASE_UNIT);
+
+        // The rvTokens owned by user should be 1:1 with rcvTokens
+        assertEq(cvault.rvTokensOwnedByUser(address(this)), userBalance);
+
+        // The user should not have earned anything yet
+        assertEq(cvault.rvTokensEarnedByUser(address(this)), 0);
+
+        // The charity should not have earned anything yet either
+        assertEq(cvault.getRVTokensEarnedByCharity(), 0);
+
+        // Now, deposit again
+        underlying.mint(address(this), userBalance);
+        underlying.approve(address(cvault), userBalance);
+        preDepositBal += userBalance;
+        cvault.deposit(userBalance);
+
+        // Vault Sanity Checks
+        assertEq(vault.exchangeRate(), BASE_UNIT);
+        assertEq(vault.totalHoldings(), userBalance);
+        assertEq(vault.totalFloat(), userBalance);
+        assertEq(underlying.balanceOf(address(this)), preDepositBal - userBalance);
+        assertEq(vault.balanceOf(address(this)), 0);
+        assertEq(vault.balanceOfUnderlying(address(cvault)), userBalance);
+
+        
+    }
+
+    /// @notice Tests Multi Deposits with a static input
+    function testMultiDepositsStatic() public {
+        testMultiDeposits(100);
     }
 
     /// @notice Tests depositing and withdrawing into the Charity Vault with Small numbers
