@@ -353,11 +353,7 @@ contract CharityVault is ERC20, Auth {
     }
 
     // Returns the exchange rate of rcvTokens in terms of rvTokens since the last extraction.
-    function rcvRvExchangeRateAtLastExtraction()
-        public
-        view
-        returns (uint256)
-    {
+    function rcvRvExchangeRateAtLastExtraction() public view returns (uint256) {
         // If there are no rvTokens in circulation, return an exchange rate of 1:1.
         if (totalSupply == 0) return BASE_UNIT;
 

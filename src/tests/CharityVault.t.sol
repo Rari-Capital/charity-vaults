@@ -225,7 +225,10 @@ contract CharityVaultTest is DSTestPlus {
         assertEq(vault.exchangeRate(), BASE_UNIT);
         assertEq(vault.totalHoldings(), userBalance);
         assertEq(vault.totalFloat(), userBalance);
-        assertEq(underlying.balanceOf(address(this)), preDepositBal - userBalance);
+        assertEq(
+            underlying.balanceOf(address(this)),
+            preDepositBal - userBalance
+        );
 
         // The vault should have no balance for this depositor
         assertEq(vault.balanceOf(address(this)), 0);
@@ -277,7 +280,10 @@ contract CharityVaultTest is DSTestPlus {
         assertEq(vault.exchangeRate(), BASE_UNIT);
         assertEq(vault.totalHoldings(), userBalance);
         assertEq(vault.totalFloat(), userBalance);
-        assertEq(underlying.balanceOf(address(this)), preDepositBal - userBalance);
+        assertEq(
+            underlying.balanceOf(address(this)),
+            preDepositBal - userBalance
+        );
         assertEq(vault.balanceOf(address(this)), 0);
         assertEq(vault.balanceOfUnderlying(address(cvault)), userBalance);
 
@@ -307,11 +313,12 @@ contract CharityVaultTest is DSTestPlus {
         assertEq(vault.exchangeRate(), BASE_UNIT);
         assertEq(vault.totalHoldings(), userBalance);
         assertEq(vault.totalFloat(), userBalance);
-        assertEq(underlying.balanceOf(address(this)), preDepositBal - userBalance);
+        assertEq(
+            underlying.balanceOf(address(this)),
+            preDepositBal - userBalance
+        );
         assertEq(vault.balanceOf(address(this)), 0);
         assertEq(vault.balanceOfUnderlying(address(cvault)), userBalance);
-
-        
     }
 
     /// @notice Tests Multi Deposits with a static input
@@ -334,7 +341,10 @@ contract CharityVaultTest is DSTestPlus {
         assertEq(vault.exchangeRate(), BASE_UNIT);
         assertEq(vault.totalHoldings(), userBalance);
         assertEq(vault.totalFloat(), userBalance);
-        assertEq(underlying.balanceOf(address(this)), preDepositBal - userBalance);
+        assertEq(
+            underlying.balanceOf(address(this)),
+            preDepositBal - userBalance
+        );
 
         // The vault should have no balance for this depositor
         assertEq(vault.balanceOf(address(this)), 0);
