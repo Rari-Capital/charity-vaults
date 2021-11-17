@@ -320,8 +320,8 @@ contract CharityVault is ERC20, Auth {
         _burn(msg.sender, amountRcvTokensToWithdraw);
 
         // Try to transfer balance to msg.sender
-        VAULT.withdraw(amountRvTokensToWithdraw);
-        UNDERLYING.safeApprove(msg.sender, withdrawalAmount);
+        VAULT.withdraw(withdrawalAmount);
+        // UNDERLYING.safeApprove(msg.sender, withdrawalAmount);
         UNDERLYING.safeTransfer(msg.sender, withdrawalAmount);
 
         emit WithdrawCV(msg.sender, withdrawalAmount, vaultEr, cVaultEr);
@@ -343,6 +343,11 @@ contract CharityVault is ERC20, Auth {
         uint256 underlyingToCharity = (underlyingEarnedSinceLastExtraction(
             pricePerShareNow
         ) * BASE_FEE) / 100;
+
+        underlyingToCharity += (rvTokensEarnedByCharity - rvTokensClaimedByCharity)
+            * (pricePerShareNow - pricePerShareAtLastExtraction)
+            / BASE_UNIT;
+
         uint256 rvTokensToCharity = underlyingToCharity.fdiv(
             pricePerShareNow,
             VAULT.BASE_UNIT()
