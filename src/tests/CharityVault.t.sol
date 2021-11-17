@@ -382,6 +382,87 @@ contract CharityVaultTest is DSTestPlus {
         assertEq(underlying.balanceOf(address(this)), preDepositBal);
     }
 
+    /// @notice Tests multiple deposits and withdrawals
+    /// @notice Pattern: deposit, deposit, withdraw, deposit, withdraw, withdraw
+    function testMultipleDepositsAndWithdrawals() public {
+        underlying.mint(address(this), 1e18);
+
+        // Deposit the first half
+        underlying.approve(address(cvault), 0.5e18);
+        cvault.deposit(0.5e18);
+        assertEq(underlying.balanceOf(address(this)), 0.5e18);
+        assertEq(underlying.balanceOf(address(cvault)), 0);
+        assertEq(underlying.balanceOf(address(vault)), 0.5e18);
+        assertEq(vault.balanceOf(address(this)), 0);
+        assertEq(vault.balanceOf(address(cvault)), 0.5e18);
+        assertEq(vault.balanceOfUnderlying(address(cvault)), 0.5e18);
+        assertEq(vault.balanceOfUnderlying(address(this)), 0);
+        assertEq(cvault.balanceOf(address(this)), 0.5e18);
+        assertEq(cvault.balanceOf(address(vault)), 0);
+
+        // Deposit the second half
+        underlying.approve(address(cvault), 0.5e18);
+        cvault.deposit(0.5e18);
+        assertEq(underlying.balanceOf(address(this)), 0);
+        assertEq(underlying.balanceOf(address(cvault)), 0);
+        assertEq(underlying.balanceOf(address(vault)), 1e18);
+        assertEq(vault.balanceOf(address(this)), 0);
+        assertEq(vault.balanceOf(address(cvault)), 1e18);
+        assertEq(vault.balanceOfUnderlying(address(cvault)), 1e18);
+        assertEq(vault.balanceOfUnderlying(address(this)), 0);
+        assertEq(cvault.balanceOf(address(this)), 1e18);
+        assertEq(cvault.balanceOf(address(vault)), 0);
+
+        // Withdraw the second half
+        cvault.withdraw(0.5e18);
+        assertEq(underlying.balanceOf(address(this)), 0.5e18);
+        assertEq(underlying.balanceOf(address(cvault)), 0);
+        assertEq(underlying.balanceOf(address(vault)), 0.5e18);
+        assertEq(vault.balanceOf(address(this)), 0);
+        assertEq(vault.balanceOf(address(cvault)), 0.5e18);
+        assertEq(vault.balanceOfUnderlying(address(cvault)), 0.5e18);
+        assertEq(vault.balanceOfUnderlying(address(this)), 0);
+        assertEq(cvault.balanceOf(address(this)), 0.5e18);
+        assertEq(cvault.balanceOf(address(vault)), 0);
+
+        // Deposit the second half
+        underlying.approve(address(cvault), 0.5e18);
+        cvault.deposit(0.5e18);
+        assertEq(underlying.balanceOf(address(this)), 0);
+        assertEq(underlying.balanceOf(address(cvault)), 0);
+        assertEq(underlying.balanceOf(address(vault)), 1e18);
+        assertEq(vault.balanceOf(address(this)), 0);
+        assertEq(vault.balanceOf(address(cvault)), 1e18);
+        assertEq(vault.balanceOfUnderlying(address(cvault)), 1e18);
+        assertEq(vault.balanceOfUnderlying(address(this)), 0);
+        assertEq(cvault.balanceOf(address(this)), 1e18);
+        assertEq(cvault.balanceOf(address(vault)), 0);
+
+        // Withdraw the second half
+        cvault.withdraw(0.5e18);
+        assertEq(underlying.balanceOf(address(this)), 0.5e18);
+        assertEq(underlying.balanceOf(address(cvault)), 0);
+        assertEq(underlying.balanceOf(address(vault)), 0.5e18);
+        assertEq(vault.balanceOf(address(this)), 0);
+        assertEq(vault.balanceOf(address(cvault)), 0.5e18);
+        assertEq(vault.balanceOfUnderlying(address(cvault)), 0.5e18);
+        assertEq(vault.balanceOfUnderlying(address(this)), 0);
+        assertEq(cvault.balanceOf(address(this)), 0.5e18);
+        assertEq(cvault.balanceOf(address(vault)), 0);
+
+        // Withdraw the first half
+        cvault.withdraw(0.5e18);
+        assertEq(underlying.balanceOf(address(this)), 1e18);
+        assertEq(underlying.balanceOf(address(cvault)), 0);
+        assertEq(underlying.balanceOf(address(vault)), 0);
+        assertEq(vault.balanceOf(address(this)), 0);
+        assertEq(vault.balanceOf(address(cvault)), 0);
+        assertEq(vault.balanceOfUnderlying(address(cvault)), 0);
+        assertEq(vault.balanceOfUnderlying(address(this)), 0);
+        assertEq(cvault.balanceOf(address(this)), 0);
+        assertEq(cvault.balanceOf(address(vault)), 0);
+    }
+
     /*///////////////////////////////////////////////////////////////
                     DEPOSIT/WITHDRAWAL SANITY CHECK TESTS
     //////////////////////////////////////////////////////////////*/
@@ -607,41 +688,304 @@ contract CharityVaultTest is DSTestPlus {
                         Successful Interest
     //////////////////////////////////////////////////////////////*/
 
-    function _testProfitableStrategySmolNumba() public {
-        // solhint-disable-next-line var-name-mixedcase
-        uint256 initial_amount = 10;
+    function testStableExchangeRatesDuringHarvests() public {
+        underlying.mint(address(this), 1.5e18);
+        underlying.approve(address(cvault), 1e18);
+        cvault.deposit(1e18);
 
-        underlying.mint(address(this), initial_amount);
-        underlying.approve(address(cvault), initial_amount);
-
-        // Track balance prior to deposit
-        cvault.deposit(initial_amount / 2);
-        cvault.deposit(initial_amount / 2);
+        // CVault Exchange rates should be 1:1
+        assertEq(cvault.rcvRvExchangeRateAtLastExtraction(), 1e18);
+        assertEq(cvault.rvTokensOwnedByUsersAtLastExtraction(), 1e18);
 
         // Deposit into Strategy
         vault.trustStrategy(cvStrategy);
-        vault.depositIntoStrategy(cvStrategy, initial_amount);
+        vault.depositIntoStrategy(cvStrategy, 1e18);
         vault.pushToWithdrawalQueue(cvStrategy);
 
-        // Mock Earned Interest By Transfering Underlying to the Charity Vault Strategy
-        underlying.mint(address(cvStrategy), initial_amount / 2);
+        // CVault Exchange rates should be 1:1
+        assertEq(cvault.rcvRvExchangeRateAtLastExtraction(), 1e18);
+        assertEq(cvault.rvTokensOwnedByUsersAtLastExtraction(), 1e18);
 
-        // Harvest will mint the strategy (initial_amount / 2) underlying tokens //
+        // Mock Earned Interest By Transfering Underlying to the Charity Vault Strategy
+        underlying.transfer(address(cvStrategy), 0.5e18);
+
+        // CVault Exchange rates should be 1:1
+        assertEq(cvault.rcvRvExchangeRateAtLastExtraction(), 1e18);
+        assertEq(cvault.rvTokensOwnedByUsersAtLastExtraction(), 1e18);
+
+        // Harvest will mint the strategy 0.5e18 underlying tokens //
         Strategy[] memory strategiesToHarvest = new Strategy[](1);
         strategiesToHarvest[0] = cvStrategy;
         vault.harvest(strategiesToHarvest);
 
+        // CVault Exchange rates should be 1:1
+        assertEq(cvault.rcvRvExchangeRateAtLastExtraction(), 1e18);
+        assertEq(cvault.rvTokensOwnedByUsersAtLastExtraction(), 1e18);
+
         // Make sure the harvest delay is checked //
         hevm.warp(block.timestamp + (vault.harvestDelay() / 2));
+
+        // CVault Exchange rates should be 1:1
+        assertEq(cvault.rcvRvExchangeRateAtLastExtraction(), 1e18);
+        assertEq(cvault.rvTokensOwnedByUsersAtLastExtraction(), 1e18);
 
         // Jump to after the harvest delay //
         hevm.warp(block.timestamp + vault.harvestDelay());
 
-        // Finally, withdraw //
-        cvault.withdraw(10);
+        // Cvault Exchange Rates
+        assertEq(cvault.rcvRvExchangeRateAtLastExtraction(), 1e18);
+        assertEq(cvault.rvTokensOwnedByUsersAtLastExtraction(), 1e18);
     }
 
-    function testProfitableStrategy() public {
+    function testUserRvTokensDuringHarvests() public {
+        underlying.mint(address(this), 1.5e18);
+        underlying.approve(address(cvault), 1e18);
+        cvault.deposit(1e18);
+
+        // CVault Exchange rates should be 1:1
+        assertEq(cvault.rvTokensEarnedByUser(address(this)), 1e18);
+        assertEq(cvault.rvTokensOwnedByUser(address(this)), 1e18);
+
+        // Deposit into Strategy
+        vault.trustStrategy(cvStrategy);
+        vault.depositIntoStrategy(cvStrategy, 1e18);
+        vault.pushToWithdrawalQueue(cvStrategy);
+
+        // CVault Exchange rates should be 1:1
+        assertEq(cvault.rcvRvExchangeRateAtLastExtraction(), 1e18);
+        assertEq(cvault.rvTokensOwnedByUsersAtLastExtraction(), 1e18);
+
+        // Mock Earned Interest By Transfering Underlying to the Charity Vault Strategy
+        underlying.transfer(address(cvStrategy), 0.5e18);
+
+        // CVault Exchange rates should be 1:1
+        assertEq(cvault.rcvRvExchangeRateAtLastExtraction(), 1e18);
+        assertEq(cvault.rvTokensOwnedByUsersAtLastExtraction(), 1e18);
+
+        // Harvest will mint the strategy 0.5e18 underlying tokens //
+        Strategy[] memory strategiesToHarvest = new Strategy[](1);
+        strategiesToHarvest[0] = cvStrategy;
+        vault.harvest(strategiesToHarvest);
+
+        // CVault Exchange rates should be 1:1
+        assertEq(cvault.rcvRvExchangeRateAtLastExtraction(), 1e18);
+        assertEq(cvault.rvTokensOwnedByUsersAtLastExtraction(), 1e18);
+
+        // Make sure the harvest delay is checked //
+        hevm.warp(block.timestamp + (vault.harvestDelay() / 2));
+
+        // CVault Exchange rates should be 1:1
+        assertEq(cvault.rcvRvExchangeRateAtLastExtraction(), 1e18);
+        assertEq(cvault.rvTokensOwnedByUsersAtLastExtraction(), 1e18);
+
+        // Jump to after the harvest delay //
+        hevm.warp(block.timestamp + vault.harvestDelay());
+
+        // Cvault Exchange Rates
+        assertEq(cvault.rcvRvExchangeRateAtLastExtraction(), 1e18);
+        assertEq(cvault.rvTokensOwnedByUsersAtLastExtraction(), 1e18);
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+    function _testExchangeRatesWithHarvesting() public {
+        underlying.mint(address(this), 1.5e18);
+        underlying.approve(address(cvault), 1e18);
+
+        // Track balance prior to deposit
+        uint256 preDepositBal = underlying.balanceOf(address(this));
+        cvault.deposit(1e18);
+
+        // After a successfull Charity Vault Deposit,
+        // the vault should contain the amount underlying token
+        assertEq(vault.exchangeRate(), 1e18);
+        assertEq(vault.totalHoldings(), 1e18);
+        assertEq(vault.totalFloat(), 1e18);
+        assertEq(underlying.balanceOf(address(this)), preDepositBal - 1e18);
+        // The vault should have no balance for this depositor
+        assertEq(vault.balanceOf(address(this)), 0);
+        // The vault should have mapped the underlying token to the cvault
+        assertEq(vault.balanceOfUnderlying(address(cvault)), 1e18);
+        // The user should be minted rcvTokens 1:1 to the underlying token
+        assertEq(cvault.balanceOf(address(this)), 1e18);
+
+        // CVault Exchange rates should be 1:1
+        assertEq(cvault.rcvRvExchangeRateAtLastExtraction(), 1e18);
+        assertEq(cvault.rvTokensOwnedByUsersAtLastExtraction(), 1e18);
+
+        // The Charity shouldn't have earned anything
+        assertEq(cvault.getRVTokensEarnedByCharity(), 0);
+
+        // The user should own all the rvTokens
+        assertEq(cvault.rvTokensOwnedByUser(address(this)), 1e18);
+
+        // ------------------------------------------- //
+
+        // Deposit into Strategy
+        vault.trustStrategy(cvStrategy);
+        vault.depositIntoStrategy(cvStrategy, 1e18);
+        vault.pushToWithdrawalQueue(cvStrategy);
+
+        // Sanity Vault Checks
+        assertEq(vault.exchangeRate(), 1e18);
+        assertEq(vault.totalStrategyHoldings(), 1e18);
+        assertEq(vault.totalHoldings(), 1e18);
+        assertEq(vault.totalFloat(), 0);
+        assertEq(vault.balanceOf(address(vault)), 0);
+        assertEq(vault.totalSupply(), 1e18);
+        assertEq(vault.balanceOfUnderlying(address(vault)), 0);
+
+        // Verify correct Vault and CVault Balances
+        assertEq(vault.balanceOf(address(this)), 0);
+        assertEq(vault.balanceOfUnderlying(address(cvault)), 1e18);
+        assertEq(cvault.balanceOf(address(this)), 1e18);
+
+        // CVault Exchange rates should be 1:1
+        assertEq(cvault.rcvRvExchangeRateAtLastExtraction(), 1e18);
+        assertEq(cvault.rvTokensOwnedByUsersAtLastExtraction(), 1e18);
+
+        // The Charity shouldn't have earned anything
+        assertEq(cvault.getRVTokensEarnedByCharity(), 0);
+
+        // The user should own all the rvTokens
+        assertEq(cvault.rvTokensOwnedByUser(address(this)), 1e18);
+
+        // ------------------------------------------- //
+
+        // Mock Earned Interest By Transfering Underlying to the Charity Vault Strategy
+        underlying.transfer(address(cvStrategy), 0.5e18);
+
+        // Sanity Vault Checks
+        assertEq(vault.exchangeRate(), 1e18);
+        assertEq(vault.totalStrategyHoldings(), 1e18);
+        assertEq(vault.totalHoldings(), 1e18);
+        assertEq(vault.totalFloat(), 0);
+        assertEq(vault.balanceOf(address(vault)), 0);
+        assertEq(vault.totalSupply(), 1e18);
+        assertEq(vault.balanceOfUnderlying(address(vault)), 0);
+
+        // Verify correct Vault and CVault Balances
+        assertEq(vault.balanceOf(address(this)), 0);
+        assertEq(vault.balanceOfUnderlying(address(cvault)), 1e18);
+        assertEq(cvault.balanceOf(address(this)), 1e18);
+
+        // CVault Exchange rates should be 1:1
+        assertEq(cvault.rcvRvExchangeRateAtLastExtraction(), 1e18);
+        assertEq(cvault.rvTokensOwnedByUsersAtLastExtraction(), 1e18);
+
+        // The Charity shouldn't have earned anything
+        assertEq(cvault.getRVTokensEarnedByCharity(), 0);
+
+        // The user should own all the rvTokens
+        assertEq(cvault.rvTokensOwnedByUser(address(this)), 1e18);
+
+        // ------------------------------------------- //
+
+        // Harvest will mint the strategy 0.5e18 underlying tokens //
+        Strategy[] memory strategiesToHarvest = new Strategy[](1);
+        strategiesToHarvest[0] = cvStrategy;
+        vault.harvest(strategiesToHarvest);
+
+        // Sanity Vault Checks
+        assertEq(vault.exchangeRate(), 1e18);
+        assertEq(vault.totalStrategyHoldings(), 1.5e18);
+        assertEq(vault.totalHoldings(), 1.05e18);
+        assertEq(vault.totalFloat(), 0);
+        assertEq(vault.balanceOf(address(vault)), 0.05e18);
+        assertEq(vault.totalSupply(), 1.05e18);
+        assertEq(vault.balanceOfUnderlying(address(vault)), 0.05e18);
+
+        // Verify correct Vault and CVault Balances
+        assertEq(vault.balanceOf(address(this)), 0);
+        assertEq(vault.balanceOfUnderlying(address(cvault)), 1e18);
+        assertEq(cvault.balanceOf(address(this)), 1e18);
+
+        // CVault Exchange rates should be 1:1
+        assertEq(cvault.rcvRvExchangeRateAtLastExtraction(), 1e18);
+        assertEq(cvault.rvTokensOwnedByUsersAtLastExtraction(), 1e18);
+
+        // The Charity shouldn't have earned anything
+        assertEq(cvault.getRVTokensEarnedByCharity(), 0);
+
+        // The user should own all the rvTokens
+        assertEq(cvault.rvTokensOwnedByUser(address(this)), 1e18);
+
+        // ------------------------------------------- //
+
+        // Make sure the harvest delay is checked //
+        hevm.warp(block.timestamp + (vault.harvestDelay() / 2));
+
+        // Sanity Vault Checks
+        assertEq(vault.exchangeRate(), 1214285714285714285);
+        assertEq(vault.totalStrategyHoldings(), 1.5e18);
+        assertEq(vault.totalHoldings(), 1.275e18);
+        assertEq(vault.totalFloat(), 0);
+        assertEq(vault.balanceOf(address(vault)), 0.05e18);
+        assertEq(vault.totalSupply(), 1.05e18);
+        assertEq(vault.balanceOfUnderlying(address(vault)), 60714285714285714);
+
+        // Verify correct Vault and CVault Balances
+        assertEq(vault.balanceOf(address(this)), 0);
+        assertEq(
+            vault.balanceOfUnderlying(address(cvault)),
+            1214285714285714285
+        );
+        assertEq(cvault.balanceOf(address(this)), 1e18);
+
+        // CVault Exchange rates should be 1:1
+        assertEq(cvault.rcvRvExchangeRateAtLastExtraction(), 1e18);
+        assertEq(cvault.rvTokensOwnedByUsersAtLastExtraction(), 1e18);
+
+        // The Charity should earn it's share
+        // assertEq(cvault.getRVTokensEarnedByCharity(), 0);
+
+        // The user should own all the rvTokens
+        assertEq(cvault.rvTokensOwnedByUser(address(this)), 1e18);
+
+        // ------------------------------------------- //
+
+        // Jump to after the harvest delay //
+        hevm.warp(block.timestamp + vault.harvestDelay());
+
+        // Sanity Vault Checks
+        assertEq(vault.exchangeRate(), 1428571428571428571);
+        assertEq(vault.totalStrategyHoldings(), 1.5e18);
+        assertEq(vault.totalHoldings(), 1.5e18);
+        assertEq(vault.totalFloat(), 0);
+        assertEq(vault.balanceOf(address(vault)), 0.05e18);
+        assertEq(vault.totalSupply(), 1.05e18);
+        assertEq(vault.balanceOfUnderlying(address(vault)), 71428571428571428);
+
+        // Verify correct Vault and CVault Balances
+        assertEq(vault.balanceOf(address(this)), 0);
+        assertEq(
+            vault.balanceOfUnderlying(address(cvault)),
+            1428571428571428571
+        );
+        assertEq(cvault.balanceOf(address(this)), 1e18);
+
+        // Cvault Exchange Rates
+        assertEq(cvault.rcvRvExchangeRateAtLastExtraction(), 1e18);
+        assertEq(cvault.rvTokensOwnedByUsersAtLastExtraction(), 1e18);
+
+        // The Charity should earn it's share
+        // assertEq(cvault.getRVTokensEarnedByCharity(), 0);
+
+        // The user should own all the rvTokens
+        assertEq(cvault.rvTokensOwnedByUser(address(this)), 1e18);
+    }
+
+    function _testProfitableStrategy() public {
         underlying.mint(address(this), 1.5e18);
         underlying.approve(address(cvault), 1e18);
 
@@ -767,7 +1111,10 @@ contract CharityVaultTest is DSTestPlus {
         );
         assertEq(cvault.balanceOf(address(this)), 1e18);
 
+        // Cvault Exchange Rates
         assertEq(cvault.rcvRvExchangeRateAtLastExtraction(), 1e18);
+        assertEq(cvault.rvTokensOwnedByUsersAtLastExtraction(), 1e18);
+
         // ------------------------------------------- //
 
         uint256 earnings = 1428571428571428571;
