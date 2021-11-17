@@ -464,7 +464,7 @@ contract CharityVaultTest is DSTestPlus {
     }
 
     /*///////////////////////////////////////////////////////////////
-                    DEPOSIT/WITHDRAWAL SANITY CHECK TESTS
+                DEPOSIT/WITHDRAWAL SANITY CHECK TESTS
     //////////////////////////////////////////////////////////////*/
 
     /// @notice Test Charity Withdrawal from CharityVault
@@ -742,8 +742,7 @@ contract CharityVaultTest is DSTestPlus {
         underlying.approve(address(cvault), 1e18);
         cvault.deposit(1e18);
 
-        // CVault Exchange rates should be 1:1
-        assertEq(cvault.rvTokensEarnedByUser(address(this)), 1e18);
+        assertEq(cvault.rvTokensEarnedByUser(address(this)), 0);
         assertEq(cvault.rvTokensOwnedByUser(address(this)), 1e18);
 
         // Deposit into Strategy
@@ -751,39 +750,35 @@ contract CharityVaultTest is DSTestPlus {
         vault.depositIntoStrategy(cvStrategy, 1e18);
         vault.pushToWithdrawalQueue(cvStrategy);
 
-        // CVault Exchange rates should be 1:1
-        assertEq(cvault.rcvRvExchangeRateAtLastExtraction(), 1e18);
-        assertEq(cvault.rvTokensOwnedByUsersAtLastExtraction(), 1e18);
+        assertEq(cvault.rvTokensEarnedByUser(address(this)), 0);
+        assertEq(cvault.rvTokensOwnedByUser(address(this)), 1e18);
 
         // Mock Earned Interest By Transfering Underlying to the Charity Vault Strategy
         underlying.transfer(address(cvStrategy), 0.5e18);
 
-        // CVault Exchange rates should be 1:1
-        assertEq(cvault.rcvRvExchangeRateAtLastExtraction(), 1e18);
-        assertEq(cvault.rvTokensOwnedByUsersAtLastExtraction(), 1e18);
+        assertEq(cvault.rvTokensEarnedByUser(address(this)), 0);
+        assertEq(cvault.rvTokensOwnedByUser(address(this)), 1e18);
 
         // Harvest will mint the strategy 0.5e18 underlying tokens //
         Strategy[] memory strategiesToHarvest = new Strategy[](1);
         strategiesToHarvest[0] = cvStrategy;
         vault.harvest(strategiesToHarvest);
 
-        // CVault Exchange rates should be 1:1
-        assertEq(cvault.rcvRvExchangeRateAtLastExtraction(), 1e18);
-        assertEq(cvault.rvTokensOwnedByUsersAtLastExtraction(), 1e18);
+        assertEq(cvault.rvTokensEarnedByUser(address(this)), 0);
+        assertEq(cvault.rvTokensOwnedByUser(address(this)), 1e18);
+
 
         // Make sure the harvest delay is checked //
         hevm.warp(block.timestamp + (vault.harvestDelay() / 2));
 
-        // CVault Exchange rates should be 1:1
-        assertEq(cvault.rcvRvExchangeRateAtLastExtraction(), 1e18);
-        assertEq(cvault.rvTokensOwnedByUsersAtLastExtraction(), 1e18);
+        assertEq(cvault.rvTokensEarnedByUser(address(this)), 0);
+        assertEq(cvault.rvTokensOwnedByUser(address(this)), 1e18);
 
         // Jump to after the harvest delay //
         hevm.warp(block.timestamp + vault.harvestDelay());
 
-        // Cvault Exchange Rates
-        assertEq(cvault.rcvRvExchangeRateAtLastExtraction(), 1e18);
-        assertEq(cvault.rvTokensOwnedByUsersAtLastExtraction(), 1e18);
+        assertEq(cvault.rvTokensEarnedByUser(address(this)), 0);
+        assertEq(cvault.rvTokensOwnedByUser(address(this)), 1e18);
     }
 
 
