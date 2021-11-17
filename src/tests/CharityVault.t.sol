@@ -9,6 +9,7 @@ import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 import {Vault} from "vaults/Vault.sol";
 import {VaultFactory} from "vaults/VaultFactory.sol";
 import {MockERC20Strategy} from "vaults/test/mocks/MockERC20Strategy.sol";
+import {Strategy} from "vaults/interfaces/Strategy.sol";
 
 import {DSTestPlus} from "./utils/DSTestPlus.sol";
 import {CharityVaultMockStrategy} from "./mocks/CharityVaultMockStrategy.sol";
@@ -626,7 +627,9 @@ contract CharityVaultTest is DSTestPlus {
         underlying.mint(address(cvStrategy), initial_amount / 2);
 
         // Harvest will mint the strategy (initial_amount / 2) underlying tokens //
-        vault.harvest(cvStrategy);
+        Strategy[] memory strategiesToHarvest = new Strategy[](1);
+        strategiesToHarvest[0] = cvStrategy;
+        vault.harvest(strategiesToHarvest);
 
         // Make sure the harvest delay is checked //
         hevm.warp(block.timestamp + (vault.harvestDelay() / 2));
@@ -702,7 +705,9 @@ contract CharityVaultTest is DSTestPlus {
         // ------------------------------------------- //
 
         // Harvest will mint the strategy 0.5e18 underlying tokens //
-        vault.harvest(cvStrategy);
+        Strategy[] memory strategiesToHarvest = new Strategy[](1);
+        strategiesToHarvest[0] = cvStrategy;
+        vault.harvest(strategiesToHarvest);
 
         // Sanity Vault Checks
         assertEq(vault.exchangeRate(), 1e18);
@@ -762,12 +767,13 @@ contract CharityVaultTest is DSTestPlus {
         );
         assertEq(cvault.balanceOf(address(this)), 1e18);
 
+        assertEq(cvault.rcvRvExchangeRateAtLastExtraction(), 1e18);
         // ------------------------------------------- //
 
         uint256 earnings = 1428571428571428571;
 
         // Finally, withdraw //
-        cvault.withdraw(0.9e18);
+        cvault.withdraw(1); // 0.9e18
 
         // Try to extract interest to charity //
         cvault.withdrawInterestToCharity();
@@ -871,7 +877,9 @@ contract CharityVaultTest is DSTestPlus {
         // ------------------------------------------- //
 
         // Harvest will mint the strategy 0.5e18 underlying tokens //
-        vault.harvest(cvStrategy);
+        Strategy[] memory strategiesToHarvest = new Strategy[](1);
+        strategiesToHarvest[0] = cvStrategy;
+        vault.harvest(strategiesToHarvest);
 
         // Sanity Vault Checks
         assertEq(vault.exchangeRate(), 1e18);
