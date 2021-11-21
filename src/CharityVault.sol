@@ -197,6 +197,9 @@ contract CharityVault is ERC20, Auth {
         view
         returns (uint256)
     {
+        // If pricePerShareNow <= pricePerShareAtLastExtraction, return 0
+        if (pricePerShareNow <= pricePerShareAtLastExtraction) return 0;
+
         // Get amount of underlying tokens earned by vault users since last extraction (before subtracting the quantity going to charity)
         uint256 underlyingEarnedByUsersSinceLastExtraction = 
             rvTokensOwnedByUsersAtLastExtraction() *
