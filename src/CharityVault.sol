@@ -262,30 +262,9 @@ contract CharityVault is ERC20, Auth {
     }
 
     /// @dev Returns how much interest a charity has earned
-    function getRVTokensUnclaimedByCharity() public view returns (uint256) {
-        uint256 pricePerShareNow = VAULT.exchangeRate();
-
-        if (pricePerShareAtLastExtraction == 0) {
-            return 0;
-        }
-
-        uint256 underlyingToCharity = (underlyingEarnedByUsersSinceLastExtraction(
-            pricePerShareNow
-        ) * BASE_FEE) / 100;
-
-        underlyingToCharity += (rvTokensEarnedByCharity - rvTokensClaimedByCharity)
-            * (pricePerShareNow - pricePerShareAtLastExtraction)
-            / BASE_UNIT;
-
-        uint256 rvTokensToCharity = underlyingToCharity.fdiv(
-            pricePerShareNow,
-            VAULT.BASE_UNIT()
-        );
-
+    function getRVTokensUnclaimedByCharity() external view returns (uint256) {
         // Add the rvtokens earned plus additional calculated earnings, minus total claimed
-        return
-            (rvTokensEarnedByCharity + rvTokensToCharity) -
-            rvTokensClaimedByCharity;
+        return getRVTokensEarnedByCharity() - rvTokensClaimedByCharity;
     }
 
     /// @notice returns the rvTokens owned by a user
