@@ -261,7 +261,7 @@ contract CharityVault is ERC20, Auth {
         return rvTokensEarnedByCharity + rvTokensToCharity;
     }
 
-    /// @dev Returns how much interest a charity has earned
+    /// @dev Returns how much interest a charity has earned but not claimed
     function getRVTokensUnclaimedByCharity() external view returns (uint256) {
         // Add the rvtokens earned plus additional calculated earnings, minus total claimed
         return getRVTokensEarnedByCharity() - rvTokensClaimedByCharity;
