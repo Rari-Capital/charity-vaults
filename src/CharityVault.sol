@@ -10,7 +10,7 @@ import {Vault} from "vaults/Vault.sol";
 import {CharityVaultFactory} from "./CharityVaultFactory.sol";
 
 /// @title Fuse Charity Vault (fcvToken)
-/// @author Transmissions11, JetJadeja, Andreas Bigger, Nicolas Neven, Adam Egyed
+/// @author Transmissions11, JetJadeja, Andreas Bigger, Nicolas Neven, Adam Egyed, David Lucid
 /// @notice Yield bearing token that enables users to swap
 /// their underlying asset to instantly begin earning yield
 /// where a percent of the earned interest is sent to charity.
@@ -181,7 +181,7 @@ contract CharityVault is ERC20, Auth {
     /// @notice Returns the total holdings of rvTokens at the time of the last extraction.
     /// @return The amount of rvTokens owned by the vault at the last extraction as a uint256
     function rvTokensOwnedByUsersAtLastExtraction()
-        public
+        internal
         view
         returns (uint256)
     {
@@ -189,11 +189,11 @@ contract CharityVault is ERC20, Auth {
             (rvTokensEarnedByCharity - rvTokensClaimedByCharity));
     }
 
-    /// @notice Calculates the amount of underlying tokens earned by value users since last extraction
+    /// @notice Calculates the amount of underlying tokens earned by vault users since last extraction (before subtracting the quantity going to charity)
     /// @param pricePerShareNow The vault exchange rate
     /// @return The amount of underlying earned by the vault since the last extraction as a uint256
     function underlyingEarnedByUsersSinceLastExtraction(uint256 pricePerShareNow)
-        public
+        internal
         view
         returns (uint256)
     {
@@ -290,34 +290,8 @@ contract CharityVault is ERC20, Auth {
     /// @notice returns the rvTokens owned by a user
     /// @param user the address of the user to get rvToken balance for
     /// @return the number of rvTokens owned as a uint256
-    function rvTokensOwnedByUser(address user) public view returns (uint256) {
-        uint256 pricePerShareNow = VAULT.exchangeRate();
-
-        uint256 proportionInterestEarnedByUser = rvTokensEarnedByUser(user);
-
-        uint256 underlyingToUser = proportionInterestEarnedByUser +
-            this.balanceOf(user);
-
-        uint256 rvTokensToUser = underlyingToUser.fdiv(
-            pricePerShareNow,
-            VAULT.BASE_UNIT()
-        );
-
-        return rvTokensToUser;
-    }
-
-    /// @notice Calculates the amount of rvTokens earned by user as a proportion of the whole vault
-    /// @param user The address of the user to get earned interest for
-    /// @return The amount of earned interest as a uint256
-    function rvTokensEarnedByUser(address user) public view returns (uint256) {
-        uint256 pricePerShareNow = VAULT.exchangeRate();
-
-        // Get the proportion of total interest earned for a user
-        uint256 proportionInterestEarnedByUser = (((underlyingEarnedByUsersSinceLastExtraction(
-                pricePerShareNow
-            ) * this.balanceOf(user)) / totalSupply) / 100);
-
-        return proportionInterestEarnedByUser;
+    function balanceOfRVTokens(address user) external view returns (uint256) {
+        return balanceOf[user].fmul(rcvRvExchangeRate(), BASE_UNIT);
     }
 
     /// @notice Withdraws a user's interest earned from the vault.
@@ -384,7 +358,7 @@ contract CharityVault is ERC20, Auth {
     }
 
     // Returns the exchange rate of rcvTokens in terms of rvTokens since the last extraction.
-    function rcvRvExchangeRateAtLastExtraction() public view returns (uint256) {
+    function rcvRvExchangeRateAtLastExtraction() internal view returns (uint256) {
         // If there are no rcvTokens in circulation, return an exchange rate of 1:1.
         if (totalSupply == 0) return BASE_UNIT;
 
@@ -392,6 +366,31 @@ contract CharityVault is ERC20, Auth {
         // Calculate the exchange rate by diving the total holdings by the rcvToken supply.
         return
             rvTokensOwnedByUsersAtLastExtraction().fdiv(totalSupply, BASE_UNIT);
+    }
+
+    // Returns the exchange rate of rcvTokens in terms of rvTokens since the last extraction.
+    function rcvRvExchangeRate() public view returns (uint256) {
+        // If there are no rcvTokens in circulation, return an exchange rate of 1:1.
+        if (totalSupply == 0) return BASE_UNIT;
+        
+        // Get rvTokens currently owned by users
+        uint256 rvTokensOwnedByUsers = VAULT.balanceOf(address(this)) - getRVTokensUnclaimedByCharity();
+
+        // TODO: Optimize double SLOAD of totalSupply here?
+        // Calculate the exchange rate by diving the total holdings by the rcvToken supply.
+        return rvTokensOwnedByUsers.fdiv(totalSupply, BASE_UNIT);
+    }
+
+    // Returns the exchange rate of rcvTokens in terms of rvTokens since the last extraction.
+    function exchangeRate() public view returns (uint256) {
+        return rcvRvExchangeRate().fmul(VAULT.exchangeRate(), BASE_UNIT);
+    }
+
+    /// @notice Returns a user's Vault balance in underlying tokens.
+    /// @param user The user to get the underlying balance of.
+    /// @return The user's Vault balance in underlying tokens.
+    function balanceOfUnderlying(address user) external view returns (uint256) {
+        return balanceOf[user].fmul(exchangeRate(), BASE_UNIT);
     }
 
     /*///////////////////////////////////////////////////////////////
