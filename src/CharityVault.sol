@@ -199,7 +199,8 @@ contract CharityVault is ERC20, Auth {
     {
         return
             rvTokensOwnedByUsersAtLastExtraction() *
-            (pricePerShareNow - pricePerShareAtLastExtraction);
+            (pricePerShareNow - pricePerShareAtLastExtraction) /
+            BASE_UNIT;
     }
 
     /// @dev Extracts and withdraws unclaimed interest earned by charity.
