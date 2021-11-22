@@ -260,7 +260,7 @@ contract CharityVault is ERC20, Auth {
     }
 
     /// @dev Returns how much interest a charity has earned but not claimed
-    function getRVTokensUnclaimedByCharity() external view returns (uint256) {
+    function getRVTokensUnclaimedByCharity() public view returns (uint256) {
         // Add the rvtokens earned plus additional calculated earnings, minus total claimed
         return getRVTokensEarnedByCharity() - rvTokensClaimedByCharity;
     }
@@ -337,7 +337,7 @@ contract CharityVault is ERC20, Auth {
     function rcvRvExchangeRate() public view returns (uint256) {
         // If there are no rcvTokens in circulation, return an exchange rate of 1:1.
         if (totalSupply == 0) return BASE_UNIT;
-        
+
         // Get rvTokens currently owned by users
         uint256 rvTokensOwnedByUsers = VAULT.balanceOf(address(this)) - getRVTokensUnclaimedByCharity();
 
