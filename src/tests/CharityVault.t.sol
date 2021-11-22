@@ -1090,52 +1090,16 @@ contract CharityVaultTest is DSTestPlus {
         );
         assertEq(cvault.balanceOf(address(this)), 1e18);
 
-        // Cvault Exchange Rates
-        // assertEq(cvault.rcvRvExchangeRateAtLastExtraction(), 1e18);
-        // assertEq(cvault.rvTokensOwnedByUsersAtLastExtraction(), 1e18);
-
-        // ------------------------------------------- //
-
-        uint256 vExchangeRate = 1428571428571428571;
-        // uint256 totalCVaultBalance = 1428571428571428571;
-        uint256 totalInterestEarned = 428571428571428571;
+        // uint256 vExchangeRate = 1428571428571428571;
+        // uint256 totalInterestEarned = 428571428571428571;
         uint256 userInterestEarned = 385714285714285715; // (90 * totalInterestEarned) / 100;
         uint256 charityInterestEarned = 42857142857142855; // 428571428571428571 - userInterestEarned;
 
-        // Pre checks //
-        assertEq(cvault.rvTokensOwnedByUsersAtLastExtraction(), 1e18);
-
-        uint256 underlyingEarnedByUsersSinceLastExtraction = (cvault
-            .rvTokensOwnedByUsersAtLastExtraction() * (vExchangeRate - 1e18)) /
-            cvault.BASE_UNIT();
-        assertEq(
-            underlyingEarnedByUsersSinceLastExtraction,
-            totalInterestEarned
-        );
-
-        uint256 underlyingToCharity = (underlyingEarnedByUsersSinceLastExtraction *
-                cvault.BASE_FEE()) / 100;
-        assertEq(underlyingToCharity, 42857142857142857);
-
-        assertEq(cvault.rvTokensEarnedByCharity(), 0);
-        assertEq(cvault.rvTokensClaimedByCharity(), 0);
-        uint256 additionalUnderlyingToCharity = ((cvault
-            .rvTokensEarnedByCharity() - cvault.rvTokensClaimedByCharity()) *
-            (vExchangeRate - cvault.pricePerShareAtLastExtraction())) /
-            cvault.BASE_UNIT();
-
-        assertEq(additionalUnderlyingToCharity, 0);
-
-        assertEq(
-            cvault.rvTokensToCharitySinceLastExtraction(vExchangeRate),
-            3e16 - 1
-        );
-
-        // Mock a withdraw and check the parameters //
-        cvault.extractInterestToCharity();
-
         // Verify balances before withdrawal //
-        assertEq(cvault.balanceOfUnderlying(address(this)), 1e18 + userInterestEarned);
+        assertEq(
+            cvault.balanceOfUnderlying(address(this)),
+            1e18 + userInterestEarned
+        );
         assertEq(underlying.balanceOf(address(this)), 0);
 
         // Finally, withdraw //
