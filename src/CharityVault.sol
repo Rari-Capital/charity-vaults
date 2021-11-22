@@ -49,14 +49,20 @@ contract CharityVault is ERC20, Auth {
     // solhint-disable-next-line var-name-mixedcase
     uint256 public immutable BASE_UNIT;
 
+    // TODO: !! Change visibility to private !!
+
     /// @notice Price per share of rvTokens at the last extraction
-    uint256 private pricePerShareAtLastExtraction;
+    uint256 public pricePerShareAtLastExtraction;
+
+    // TODO: !! Change visibility to private !!
 
     /// @notice accumulated rvTokens earned by the Charity at the last extraction
-    uint256 private rvTokensEarnedByCharity;
+    uint256 public rvTokensEarnedByCharity;
+
+    // TODO: !! Change visibility to private !!
 
     /// @notice rvTokens claimed by the Charity
-    uint256 private rvTokensClaimedByCharity;
+    uint256 public rvTokensClaimedByCharity;
 
     /// @notice Creates a new charity vault based on an underlying token.
     /// @param _UNDERLYING An underlying ERC20 compliant token.
@@ -181,7 +187,7 @@ contract CharityVault is ERC20, Auth {
     /// @notice Returns the total holdings of rvTokens at the time of the last extraction.
     /// @return The amount of rvTokens owned by the vault at the last extraction as a uint256
     function rvTokensOwnedByUsersAtLastExtraction()
-        internal
+        public
         view
         returns (uint256)
     {
@@ -193,7 +199,7 @@ contract CharityVault is ERC20, Auth {
     /// @param pricePerShareNow The vault exchange rate
     /// @return The amount of rvTokens to extract to the charity since the last extraction as a uint256
     function rvTokensToCharitySinceLastExtraction(uint256 pricePerShareNow)
-        internal
+        public
         view
         returns (uint256)
     {
@@ -205,6 +211,9 @@ contract CharityVault is ERC20, Auth {
         uint256 underlyingEarnedByUsersSinceLastExtraction = (rvTokensOwnedByUsersAtLastExtraction() *
                 (pricePerShareNow - pricePerShareAtLastExtraction)) / BASE_UNIT;
 
+        // Get the amount of underlying to be directed to charity
+        /// @dev need to divide by 100 since BASE_FEE is a percent
+        /// @dev represented as whole numbers (i.e. 0.10 or 10% is a BASE_FEE=10)
         uint256 underlyingToCharity = (underlyingEarnedByUsersSinceLastExtraction *
                 BASE_FEE) / 100;
 
@@ -234,20 +243,20 @@ contract CharityVault is ERC20, Auth {
         uint256 cVaultEr = rcvRvExchangeRateAtLastExtraction();
 
         /// INTERACTIONS
-        if (rvTokensToClaim > 0) {
-            uint256 withdrawUnderlyingAmount = rvTokensToClaim.fmul(
-                vaultEr,
-                BASE_UNIT
-            );
-            VAULT.redeem(rvTokensToClaim);
-            UNDERLYING.safeTransfer(CHARITY, withdrawUnderlyingAmount);
-            emit CharityWithdrawCV(
-                msg.sender,
-                withdrawUnderlyingAmount,
-                vaultEr,
-                cVaultEr
-            );
-        }
+        if (rvTokensToClaim <= 0) return;
+
+        uint256 withdrawUnderlyingAmount = rvTokensToClaim.fmul(
+            vaultEr,
+            BASE_UNIT
+        );
+        VAULT.redeem(rvTokensToClaim);
+        UNDERLYING.safeTransfer(CHARITY, withdrawUnderlyingAmount);
+        emit CharityWithdrawCV(
+            msg.sender,
+            withdrawUnderlyingAmount,
+            vaultEr,
+            cVaultEr
+        );
     }
 
     /// @dev Returns how much interest a charity has earned
@@ -275,17 +284,17 @@ contract CharityVault is ERC20, Auth {
     /// @notice Withdraws a user's interest earned from the vault.
     /// @param withdrawalAmount The amount of the underlying token to withdraw.
     function withdraw(uint256 withdrawalAmount) external {
-        // We don't allow withdrawing 0 to prevent emitting a useless event.
+        /// CHECKS
         require(withdrawalAmount != 0, "AMOUNT_CANNOT_BE_ZERO");
+        require(balanceOfUnderlying(msg.sender) >= withdrawalAmount, "INSUFFICIENT_BALANCE");
 
+        /// EFFECTS
         // First extract interest to charity
         extractInterestToCharity();
-
         // Fix Exchange Rates
         uint256 vaultEr = VAULT.exchangeRate();
         uint256 cVaultEr = rcvRvExchangeRateAtLastExtraction();
-
-        // Calculatooor
+        // Calculate Token Amounts
         uint256 amountRvTokensToWithdraw = withdrawalAmount.fdiv(
             vaultEr,
             BASE_UNIT
@@ -295,13 +304,12 @@ contract CharityVault is ERC20, Auth {
             BASE_UNIT
         );
 
+        /// INTERACTIONS
         // This will revert if the user does not have enough rcvTokens.
         _burn(msg.sender, amountRcvTokensToWithdraw);
-
         // Try to transfer balance to msg.sender
         VAULT.withdraw(withdrawalAmount);
         UNDERLYING.safeTransfer(msg.sender, withdrawalAmount);
-
         emit WithdrawCV(msg.sender, withdrawalAmount, vaultEr, cVaultEr);
     }
 
@@ -310,7 +318,7 @@ contract CharityVault is ERC20, Auth {
     //////////////////////////////////////////////////////////////*/
 
     /// @dev Do this before user deposits, user withdrawals, and charity withdrawals.
-    function extractInterestToCharity() internal {
+    function extractInterestToCharity() public {
         uint256 pricePerShareNow = VAULT.exchangeRate();
 
         if (pricePerShareAtLastExtraction == 0) {
@@ -318,15 +326,15 @@ contract CharityVault is ERC20, Auth {
             return;
         }
 
-        pricePerShareAtLastExtraction = pricePerShareNow;
         rvTokensEarnedByCharity += rvTokensToCharitySinceLastExtraction(
             pricePerShareNow
         );
+        pricePerShareAtLastExtraction = pricePerShareNow;
     }
 
     // Returns the exchange rate of rcvTokens in terms of rvTokens since the last extraction.
     function rcvRvExchangeRateAtLastExtraction()
-        internal
+        public
         view
         returns (uint256)
     {
@@ -361,7 +369,7 @@ contract CharityVault is ERC20, Auth {
     /// @notice Returns a user's Vault balance in underlying tokens.
     /// @param user The user to get the underlying balance of.
     /// @return The user's Vault balance in underlying tokens.
-    function balanceOfUnderlying(address user) external view returns (uint256) {
+    function balanceOfUnderlying(address user) public view returns (uint256) {
         return balanceOf[user].fmul(exchangeRate(), BASE_UNIT);
     }
 
