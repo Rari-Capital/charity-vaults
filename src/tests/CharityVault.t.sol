@@ -754,10 +754,7 @@ contract CharityVaultTest is DSTestPlus {
         assertEq(vault.balanceOf(address(this)), 0);
         assertEq(cvault.balanceOf(address(this)), 2);
         assertEq(cvault.balanceOfUnderlying(address(this)), 1);
-        assertEq(
-            underlying.balanceOf(address(this)),
-            1385714285714285715
-        );
+        assertEq(underlying.balanceOf(address(this)), 1385714285714285715);
 
         // Try to extract interest to charity //
         cvault.withdrawInterestToCharity();
@@ -839,7 +836,7 @@ contract CharityVaultTest is DSTestPlus {
         );
         assertEq(underlying.balanceOf(address(this)), 0.5e18);
 
-        // Try to extract interest to charity //
+        // Extract interest to charity //
         cvault.withdrawInterestToCharity();
         assertEq(underlying.balanceOf(caddress), 42857142857142855);
 
@@ -854,23 +851,29 @@ contract CharityVaultTest is DSTestPlus {
         // Jump to after the harvest delay //
         hevm.warp(block.timestamp + vault.harvestDelay());
 
-         // Validate balances before withdrawal //
+        // Validate balances before withdrawal //
         assertEq(
             cvault.balanceOfUnderlying(address(this)),
-            1758083953960731215
+            1758083953960731214
         );
         assertEq(underlying.balanceOf(address(this)), 0);
 
         // Withdraw
-        cvault.withdraw(1758083953960731215);
+        cvault.withdraw(1758083953960731214);
 
         // Validate balances after withdrawal //
         assertEq(vault.balanceOf(address(this)), 0);
         assertEq(cvault.balanceOf(address(this)), 2);
-        assertEq(cvault.balanceOfUnderlying(address(this)), 1);
-        assertEq(
-            underlying.balanceOf(address(this)),
-            1758083953960731215
-        );
+        assertEq(cvault.balanceOfUnderlying(address(this)), 3);
+        assertEq(underlying.balanceOf(address(this)), 1758083953960731214);
+
+        // Extract interest to charity //
+        cvault.withdrawInterestToCharity();
+        assertEq(underlying.balanceOf(caddress), 84231550440081241);
+
+        // The Vault should now be empty
+        assertEq(vault.balanceOf(address(cvault)), 2);
+        assertEq(vault.totalSupply(), 85000000000000001);
+        assertEq(cvault.totalSupply(), 1);
     }
 }

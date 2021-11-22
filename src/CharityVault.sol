@@ -182,7 +182,7 @@ contract CharityVault is ERC20, Auth {
         extractInterestToCharity();
 
         // Update claimed rvTokens
-        uint256 rvTokensToClaim = rvTokensEarnedByCharity -
+        uint256 rvTokenClaim = rvTokensEarnedByCharity -
             rvTokensClaimedByCharity;
         rvTokensClaimedByCharity = rvTokensEarnedByCharity;
 
@@ -190,17 +190,24 @@ contract CharityVault is ERC20, Auth {
         uint256 vaultEr = VAULT.exchangeRate();
         uint256 cVaultEr = rcvRvExchangeRate();
 
-        if (rvTokensToClaim <= 0) return;
-        
-        uint256 withdrawUnderlyingAmount = rvTokensToClaim.fmul(
+        if (rvTokenClaim <= 0) return;
+
+        uint256 withdrawUnderlyingAmount = rvTokenClaim.fmul(
             vaultEr,
             BASE_UNIT
         );
+        uint256 rcvTokenClaim = rvTokenClaim.fdiv(
+            cVaultEr,
+            BASE_UNIT
+        );
+
+        // This will revert if the charity does not have enough rcvTokens.
+        _burn(msg.sender, rcvTokenClaim);
 
         /// Redeem and transfer
-        VAULT.redeem(rvTokensToClaim);
+        VAULT.redeem(rvTokenClaim);
         UNDERLYING.safeTransfer(CHARITY, withdrawUnderlyingAmount);
-        
+
         // Pessimistic Event Emission
         emit CharityWithdrawCV(
             msg.sender,
