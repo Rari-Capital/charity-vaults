@@ -215,7 +215,7 @@ contract CharityVaultTest is DSTestPlus {
         underlying.approve(address(cvault), userBalance);
 
         // Initially the exchange rate should be the BASE_UNIT
-        assertEq(cvault.rcvRvExchangeRateAtLastExtraction(), BASE_UNIT);
+        assertEq(cvault.rcvRvExchangeRate(), BASE_UNIT);
 
         // Track balance prior to deposit
         uint256 preDepositBal = underlying.balanceOf(address(this));
@@ -242,7 +242,7 @@ contract CharityVaultTest is DSTestPlus {
 
         // After a deposit, the exchange rate should be the rvTokens owned
         // by users at last extraction divided by the total supply.
-        assertEq(cvault.rcvRvExchangeRateAtLastExtraction(), BASE_UNIT);
+        assertEq(cvault.rcvRvExchangeRate(), BASE_UNIT);
 
         // The rvTokens owned by user should be 1:1 with rcvTokens
         assertEq(cvault.rvTokensOwnedByUser(address(this)), userBalance);
