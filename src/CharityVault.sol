@@ -286,7 +286,10 @@ contract CharityVault is ERC20, Auth {
     function withdraw(uint256 withdrawalAmount) external {
         /// CHECKS
         require(withdrawalAmount != 0, "AMOUNT_CANNOT_BE_ZERO");
-        require(balanceOfUnderlying(msg.sender) >= withdrawalAmount, "INSUFFICIENT_BALANCE");
+        require(
+            balanceOfUnderlying(msg.sender) >= withdrawalAmount,
+            "INSUFFICIENT_BALANCE"
+        );
 
         /// EFFECTS
         // First extract interest to charity
@@ -333,11 +336,7 @@ contract CharityVault is ERC20, Auth {
     }
 
     // Returns the exchange rate of rcvTokens in terms of rvTokens since the last extraction.
-    function rcvRvExchangeRateAtLastExtraction()
-        public
-        view
-        returns (uint256)
-    {
+    function rcvRvExchangeRateAtLastExtraction() public view returns (uint256) {
         // If there are no rcvTokens in circulation, return an exchange rate of 1:1.
         if (totalSupply == 0) return BASE_UNIT;
 
