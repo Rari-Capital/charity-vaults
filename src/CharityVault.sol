@@ -10,7 +10,7 @@ import {Vault} from "vaults/Vault.sol";
 import {CharityVaultFactory} from "./CharityVaultFactory.sol";
 
 /// @title Fuse Charity Vault (fcvToken)
-/// @author Transmissions11, JetJadeja, Andreas Bigger, Nicolas Neven, Adam Egyed
+/// @author Transmissions11, JetJadeja, Andreas Bigger, Nicolas Neven, Adam Egyed, David Lucid
 /// @notice Yield bearing token that enables users to swap
 /// their underlying asset to instantly begin earning yield
 /// where a percent of the earned interest is sent to charity.
@@ -19,7 +19,7 @@ contract CharityVault is ERC20, Auth {
     using FixedPointMathLib for uint256;
 
     /*///////////////////////////////////////////////////////////////
-                                CONSTANTS
+                                State
     //////////////////////////////////////////////////////////////*/
 
     /// @dev we need to compose a Vault here because the Vault functions are external
@@ -49,13 +49,13 @@ contract CharityVault is ERC20, Auth {
     // solhint-disable-next-line var-name-mixedcase
     uint256 public immutable BASE_UNIT;
 
-    /// @notice Price per share of rvTokens earned at the last extraction
+    /// @notice Price per share of rvTokens at the last extraction
     uint256 private pricePerShareAtLastExtraction;
 
-    /// @notice accumulated rvTokens earned by the Charity
+    /// @notice Total rvTokens earned by the Charity at the last extraction
     uint256 private rvTokensEarnedByCharity;
 
-    /// @notice rvTokens claimed by the Charity
+    /// @notice Total rvTokens claimed by the Charity
     uint256 private rvTokensClaimedByCharity;
 
     /// @notice Creates a new charity vault based on an underlying token.
@@ -100,7 +100,6 @@ contract CharityVault is ERC20, Auth {
         CHARITY = _CHARITY;
         BASE_FEE = _BASE_FEE;
         VAULT = _VAULT;
-
         BASE_UNIT = 10**decimals;
     }
 
@@ -111,56 +110,59 @@ contract CharityVault is ERC20, Auth {
     /// @notice Emitted after a successful deposit.
     /// @param user The address of the account that deposited into the vault.
     /// @param underlyingAmount The amount of underlying tokens that were deposited.
-    /// @param exchangeRate The current exchange rate.
+    /// @param vaultExchangeRate The current Vault exchange rate.
+    /// @param cvaultExchangeRate The current Vault exchange rate.
     event DepositCV(
         address indexed user,
         uint256 underlyingAmount,
-        uint256 exchangeRate
+        uint256 vaultExchangeRate,
+        uint256 cvaultExchangeRate
     );
 
     /// @notice Emitted after a successful user withdrawal.
     /// @param user The address of the account that withdrew from the vault.
     /// @param underlyingAmount The amount of underlying tokens that were withdrawn.
-    /// @param exchangeRate The current exchange rate.
+    /// @param vaultExchangeRate The current Vault exchange rate.
+    /// @param cvaultExchangeRate The current Vault exchange rate.
     event WithdrawCV(
         address indexed user,
         uint256 underlyingAmount,
-        uint256 exchangeRate
+        uint256 vaultExchangeRate,
+        uint256 cvaultExchangeRate
     );
 
     /// @notice Emitted when a Charity successfully withdraws their fee percent of earned interest.
     /// @param charity the address of the charity that withdrew - used primarily for indexing
     /// @param underlyingAmount The amount of underlying tokens that were withdrawn.
-    /// @param exchangeRate The current exchange rate.
+    /// @param vaultExchangeRate The current Vault exchange rate.
+    /// @param cvaultExchangeRate The current Vault exchange rate.
     event CharityWithdrawCV(
         address indexed charity,
         uint256 underlyingAmount,
-        uint256 exchangeRate
+        uint256 vaultExchangeRate,
+        uint256 cvaultExchangeRate
     );
 
     /*///////////////////////////////////////////////////////////////
-                        DEPOSIT/WITHDRAWAL LOGIC
+                        DEPOSIT AND WITHDRAWAL LOGIC
     //////////////////////////////////////////////////////////////*/
 
-    /// @notice Deposit the vault's underlying token to mint rcvTokens.
-    /// @param underlyingAmount The amount of the underlying token to deposit.
+    /// @notice Deposit the vault's underlying token to mint rcvTokens
+    /// @param underlyingAmount The amount of the underlying token to deposit
     function deposit(uint256 underlyingAmount) external {
-        // We don't allow depositing 0 to prevent emitting a useless event.
         require(underlyingAmount != 0, "AMOUNT_CANNOT_BE_ZERO");
 
         // Extract interest to charity
         extractInterestToCharity();
 
+        // Fix exchange rates
+        uint256 vaultEr = VAULT.exchangeRate();
+        uint256 cVaultEr = rcvRvExchangeRate();
+
         // Determine the equivalent amount of rvTokens that will be minted to this charity vault.
-        uint256 rvTokensToMint = underlyingAmount.fdiv(
-            VAULT.exchangeRate(),
-            BASE_UNIT
-        );
-        _mint(
-            msg.sender,
-            rvTokensToMint.fdiv(rcvRvExchangeRateAtLastExtraction(), BASE_UNIT)
-        );
-        emit DepositCV(msg.sender, underlyingAmount, VAULT.exchangeRate());
+        uint256 rvTokensToMint = underlyingAmount.fdiv(vaultEr, BASE_UNIT);
+        _mint(msg.sender, rvTokensToMint.fdiv(cVaultEr, BASE_UNIT));
+        emit DepositCV(msg.sender, underlyingAmount, vaultEr, cVaultEr);
 
         // Transfer in UNDERLYING tokens from the sender to the vault
         UNDERLYING.safeApprove(address(VAULT), underlyingAmount);
@@ -174,125 +176,86 @@ contract CharityVault is ERC20, Auth {
         VAULT.deposit(underlyingAmount);
     }
 
-    // Returns the total holdings of rvTokens at the time of the last extraction.
-    function rcvTokensOwnedByUsersAtLastExtraction()
-        internal
-        view
-        returns (uint256)
-    {
-        return (VAULT.balanceOf(address(this)) -
-            (rvTokensEarnedByCharity - rvTokensClaimedByCharity));
-    }
-
-    /// @dev Extracts and withdraws unclaimed interest earned by charity.
+    /// @notice Extracts and withdraws unclaimed interest earned by charity
     function withdrawInterestToCharity() external {
-        /// EFFECTS
+        // Extract interest to charity
         extractInterestToCharity();
-        uint256 rvTokensToClaim = rvTokensEarnedByCharity -
+
+        // Update claimed rvTokens
+        uint256 rvTokenClaim = rvTokensEarnedByCharity -
             rvTokensClaimedByCharity;
         rvTokensClaimedByCharity = rvTokensEarnedByCharity;
 
-        /// INTERACTIONS
-        if (rvTokensToClaim > 0) {
-            uint256 withdrawUnderlyingAmount = rvTokensToClaim.fmul(
-                VAULT.exchangeRate(),
-                BASE_UNIT
-            );
-            VAULT.redeem(rvTokensToClaim);
-            UNDERLYING.safeApprove(CHARITY, withdrawUnderlyingAmount);
-            UNDERLYING.safeTransfer(CHARITY, withdrawUnderlyingAmount);
-            emit CharityWithdrawCV(
-                msg.sender,
-                withdrawUnderlyingAmount,
-                VAULT.exchangeRate()
-            );
-        }
+        // Fix exchange rates
+        uint256 vaultEr = VAULT.exchangeRate();
+        uint256 cVaultEr = rcvRvExchangeRate();
 
-        // VAULT.transfer(CHARITY, rvTokensToClaim);
-    }
+        if (rvTokenClaim <= 0) return;
 
-    /// @dev Returns how much interest a charity has earned
-    function getRVTokensEarnedByCharity() public view returns (uint256) {
-        uint256 pricePerShareNow = VAULT.exchangeRate();
-
-        if (pricePerShareAtLastExtraction == 0) {
-            return 0;
-        }
-
-        uint256 underlyingEarnedByUsersSinceLastExtraction = (VAULT.balanceOf(
-            address(this)
-        ) - (rvTokensEarnedByCharity - rvTokensClaimedByCharity)) *
-            (pricePerShareNow - pricePerShareAtLastExtraction);
-
-        uint256 underlyingToCharity = (underlyingEarnedByUsersSinceLastExtraction *
-                BASE_FEE) / 100;
-        uint256 rvTokensToCharity = underlyingToCharity.fdiv(
-            pricePerShareNow,
-            // recalculate decimals to navigate around BASE_UNIT being internal
-            10**VAULT.decimals()
+        uint256 withdrawUnderlyingAmount = rvTokenClaim.fmul(
+            vaultEr,
+            BASE_UNIT
+        );
+        uint256 rcvTokenClaim = rvTokenClaim.fdiv(
+            cVaultEr,
+            BASE_UNIT
         );
 
-        // Add the rvtokens earned plus additional calculated earnings, minus total claimed
-        return
-            (rvTokensEarnedByCharity + rvTokensToCharity) -
-            rvTokensClaimedByCharity;
-    }
+        // This will revert if the charity does not have enough rcvTokens.
+        _burn(msg.sender, rcvTokenClaim);
 
-    /// @notice returns the rcvTokens owned by a user
-    function rvTokensOwnedByUser(address user) public view returns (uint256) {
-        uint256 pricePerShareNow = VAULT.exchangeRate();
+        /// Redeem and transfer
+        VAULT.redeem(rvTokenClaim);
+        UNDERLYING.safeTransfer(CHARITY, withdrawUnderlyingAmount);
 
-        uint256 underlyingEarnedByUsersSinceLastExtraction = (VAULT.balanceOf(
-            address(this)
-        ) - (rvTokensEarnedByCharity - rvTokensClaimedByCharity)) *
-            (pricePerShareNow - pricePerShareAtLastExtraction);
-
-        // Get the proportion of total interest earned for a user
-        uint256 proportionInterestEarnedByUser = (((underlyingEarnedByUsersSinceLastExtraction *
-                this.balanceOf(user)) / totalSupply) / 100);
-
-        uint256 underlyingToUser = proportionInterestEarnedByUser +
-            this.balanceOf(user);
-
-        uint256 rvTokensToUser = underlyingToUser.fdiv(
-            pricePerShareNow,
-            // recalculate decimals to navigate around BASE_UNIT being internal
-            10**VAULT.decimals()
+        // Pessimistic Event Emission
+        emit CharityWithdrawCV(
+            msg.sender,
+            withdrawUnderlyingAmount,
+            vaultEr,
+            cVaultEr
         );
-
-        return rvTokensToUser;
     }
 
     /// @notice Withdraws a user's interest earned from the vault.
     /// @param withdrawalAmount The amount of the underlying token to withdraw.
     function withdraw(uint256 withdrawalAmount) external {
-        // We don't allow withdrawing 0 to prevent emitting a useless event.
         require(withdrawalAmount != 0, "AMOUNT_CANNOT_BE_ZERO");
-
-        // First extract interest to charity
-        extractInterestToCharity();
-
-        uint256 rvTokensToUser = rvTokensOwnedByUser(msg.sender);
-
-        require(rvTokensToUser >= withdrawalAmount, "INSUFFICIENT_FUNDS");
-
-        // Determine the equivalent amount of rcvTokens and burn them.
-        // This will revert if the user does not have enough rcvTokens.
-        _burn(
-            msg.sender,
-            withdrawalAmount.fdiv(VAULT.exchangeRate(), BASE_UNIT)
+        require(
+            balanceOfUnderlying(msg.sender) >= withdrawalAmount,
+            "INSUFFICIENT_BALANCE"
         );
 
+        // Extract interest to charity
+        extractInterestToCharity();
+
+        // Fix Exchange Rates
+        uint256 vaultEr = VAULT.exchangeRate();
+        uint256 cVaultEr = rcvRvExchangeRate();
+
+        // Calculate Token Amounts
+        uint256 amountRvTokensToWithdraw = withdrawalAmount.fdiv(
+            vaultEr,
+            BASE_UNIT
+        );
+        uint256 amountRcvTokensToWithdraw = amountRvTokensToWithdraw.fdiv(
+            cVaultEr,
+            BASE_UNIT
+        );
+
+        // This will revert if the user does not have enough rcvTokens.
+        _burn(msg.sender, amountRcvTokensToWithdraw);
+
         // Try to transfer balance to msg.sender
-        VAULT.withdraw(rvTokensToUser);
-        UNDERLYING.safeApprove(msg.sender, withdrawalAmount);
+        VAULT.withdraw(withdrawalAmount);
         UNDERLYING.safeTransfer(msg.sender, withdrawalAmount);
 
-        emit WithdrawCV(msg.sender, withdrawalAmount, VAULT.exchangeRate());
+        // Pessimistic Event Emition
+        emit WithdrawCV(msg.sender, withdrawalAmount, vaultEr, cVaultEr);
     }
 
     /*///////////////////////////////////////////////////////////////
-                        VAULT ACCOUNTING LOGIC
+                        CHARITY VAULT ACCOUNTING LOGIC
     //////////////////////////////////////////////////////////////*/
 
     /// @dev Do this before user deposits, user withdrawals, and charity withdrawals.
@@ -304,37 +267,116 @@ contract CharityVault is ERC20, Auth {
             return;
         }
 
-        uint256 underlyingEarnedByUsersSinceLastExtraction = (VAULT.balanceOf(
-            address(this)
-        ) - (rvTokensEarnedByCharity - rvTokensClaimedByCharity)) *
-            (pricePerShareNow - pricePerShareAtLastExtraction);
-
-        uint256 underlyingToCharity = (underlyingEarnedByUsersSinceLastExtraction *
-                BASE_FEE) / 100;
-        uint256 rvTokensToCharity = underlyingToCharity.fdiv(
-            pricePerShareNow,
-            VAULT.BASE_UNIT()
+        rvTokensEarnedByCharity += rvTokensToCharitySinceLastExtraction(
+            pricePerShareNow
         );
-
         pricePerShareAtLastExtraction = pricePerShareNow;
-        rvTokensEarnedByCharity += rvTokensToCharity;
     }
 
-    // Returns the exchange rate of rcvTokens in terms of rvTokens since the last extraction.
-    function rcvRvExchangeRateAtLastExtraction()
+    /// @notice Calculates the amount of rvTokens to extract to the charity since the last extraction
+    /// @dev Pass in a pre-fetched price per share to prevent contentions
+    /// @param pricePerShareNow The vault exchange rate
+    /// @return The amount of rvTokens earned by a the charity since the last extraction as a uint256
+    function rvTokensToCharitySinceLastExtraction(uint256 pricePerShareNow)
         internal
         view
         returns (uint256)
     {
-        // If there are no rvTokens in circulation, return an exchange rate of 1:1.
-        if (totalSupply == 0) return BASE_UNIT;
+        // If pricePerShareNow <= pricePerShareAtLastExtraction, return 0
+        if (pricePerShareNow <= pricePerShareAtLastExtraction) return 0;
 
-        // TODO: Optimize double SLOAD of totalSupply here?
-        // Calculate the exchange rate by diving the total holdings by the rvToken supply.
-        return
-            rcvTokensOwnedByUsersAtLastExtraction().fdiv(
-                totalSupply,
+        // Get amount of underlying tokens earned by vault users since last extraction
+        // (before subtracting the quantity going to charity)
+        uint256 underlyingEarnedByUsersSinceLastExtraction = rvTokensOwnedByUsersAtLastExtraction()
+                .fmul(
+                    (pricePerShareNow - pricePerShareAtLastExtraction),
+                    BASE_UNIT
+                );
+
+        // Get the amount of underlying to be directed to charity
+        /// @dev need to divide by 100 since BASE_FEE is a percent
+        /// @dev represented as whole numbers (i.e. 0.10 or 10% is a BASE_FEE=10)
+        uint256 underlyingToCharity = (underlyingEarnedByUsersSinceLastExtraction *
+                BASE_FEE) / 100;
+
+        underlyingToCharity += (rvTokensEarnedByCharity -
+            rvTokensClaimedByCharity).fmul(
+                (pricePerShareNow - pricePerShareAtLastExtraction),
                 BASE_UNIT
             );
+
+        return underlyingToCharity.fdiv(pricePerShareNow, VAULT.BASE_UNIT());
     }
+
+    /// @notice Returns the total holdings of rvTokens at the time of the last extraction.
+    /// @return The amount of rvTokens owned by the vault at the last extraction as a uint256
+    function rvTokensOwnedByUsersAtLastExtraction()
+        internal
+        view
+        returns (uint256)
+    {
+        return (VAULT.balanceOf(address(this)) -
+            (rvTokensEarnedByCharity - rvTokensClaimedByCharity));
+    }
+
+    /// @notice Calculates the total interest earned by the Charity
+    /// @return the total interest earned in rvTokens
+    function getRVTokensEarnedByCharity() internal view returns (uint256) {
+        uint256 pricePerShareNow = VAULT.exchangeRate();
+        if (pricePerShareAtLastExtraction == 0) return 0;
+        return
+            rvTokensEarnedByCharity +
+            rvTokensToCharitySinceLastExtraction(pricePerShareNow);
+    }
+
+    /// @notice Calculates the amount of rvTokens earned and not claimed by the charity
+    /// @return The number of earned rvTokens
+    function getRVTokensUnclaimedByCharity() internal view returns (uint256) {
+        // Sums the rvTokens earned plus additional calculated
+        // earnings (since the last extraction), minus total claimed
+        return getRVTokensEarnedByCharity() - rvTokensClaimedByCharity;
+    }
+
+    /// @notice Returns the exchange rate of rcvTokens in terms of rvTokens since the last extraction.
+    function rcvRvExchangeRate() public view returns (uint256) {
+        // Get the total supply of rvTokens.
+        uint256 rcvTokenSupply = totalSupply;
+
+        // If there are no rcvTokens in circulation, return an exchange rate of 1:1.
+        if (rcvTokenSupply == 0) return BASE_UNIT;
+
+        // Get rvTokens currently owned by users
+        uint256 rvTokensOwnedByUsers = VAULT.balanceOf(address(this)) -
+            getRVTokensUnclaimedByCharity();
+
+        // Calculate the exchange rate by diving the total holdings by the rcvToken supply.
+        return rvTokensOwnedByUsers.fdiv(rcvTokenSupply, BASE_UNIT);
+    }
+
+    /// @notice Returns the exchange rate of rcvTokens to underlying
+    function exchangeRate() public view returns (uint256) {
+        return rcvRvExchangeRate().fmul(VAULT.exchangeRate(), BASE_UNIT);
+    }
+
+    /// @notice Returns the rvTokens owned by a user
+    /// @param user The address of the user to get the rvToken balance
+    /// @return The number of rvTokens owned as a uint256
+    function balanceOfRVTokens(address user) external view returns (uint256) {
+        return balanceOf[user].fmul(rcvRvExchangeRate(), BASE_UNIT);
+    }
+
+    /// @notice Returns a user's Vault balance in underlying tokens.
+    /// @param user The user to get the underlying balance of.
+    /// @return The user's Vault balance in underlying tokens.
+    function balanceOfUnderlying(address user) public view returns (uint256) {
+        return balanceOf[user].fmul(exchangeRate(), BASE_UNIT);
+    }
+
+    /*///////////////////////////////////////////////////////////////
+                          RECIEVE ETHER LOGIC
+    //////////////////////////////////////////////////////////////*/
+
+    /// @dev Required for the CharityVault to receive unwrapped ETH.
+    // solhint-disable-next-line no-empty-blocks
+    receive() external payable {}
 }
