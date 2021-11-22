@@ -208,8 +208,10 @@ contract CharityVault is ERC20, Auth {
 
         // Get amount of underlying tokens earned by vault users since last extraction
         // (before subtracting the quantity going to charity)
-        uint256 underlyingEarnedByUsersSinceLastExtraction = (rvTokensOwnedByUsersAtLastExtraction() *
-                (pricePerShareNow - pricePerShareAtLastExtraction)) / BASE_UNIT;
+        uint256 underlyingEarnedByUsersSinceLastExtraction = rvTokensOwnedByUsersAtLastExtraction().fmul(
+                (pricePerShareNow - pricePerShareAtLastExtraction),
+                BASE_UNIT
+            );
 
         // Get the amount of underlying to be directed to charity
         /// @dev need to divide by 100 since BASE_FEE is a percent
@@ -218,9 +220,9 @@ contract CharityVault is ERC20, Auth {
                 BASE_FEE) / 100;
 
         underlyingToCharity +=
-            ((rvTokensEarnedByCharity - rvTokensClaimedByCharity) *
-                (pricePerShareNow - pricePerShareAtLastExtraction)) /
-            BASE_UNIT;
+            (rvTokensEarnedByCharity - rvTokensClaimedByCharity).fmul(
+                (pricePerShareNow - pricePerShareAtLastExtraction),
+            BASE_UNIT);
 
         return underlyingToCharity.fdiv(pricePerShareNow, VAULT.BASE_UNIT());
     }

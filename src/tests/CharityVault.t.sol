@@ -1099,8 +1099,8 @@ contract CharityVaultTest is DSTestPlus {
         uint256 vExchangeRate = 1428571428571428571;
         // uint256 totalCVaultBalance = 1428571428571428571;
         uint256 totalInterestEarned = 428571428571428571;
-        uint256 userInterestEarned = (90 * totalInterestEarned) / 100;
-        uint256 charityInterestEarned = (10 * totalInterestEarned) / 100;
+        uint256 userInterestEarned = 385714285714285715; // (90 * totalInterestEarned) / 100;
+        uint256 charityInterestEarned = 42857142857142855; // 428571428571428571 - userInterestEarned;
 
         // Pre checks //
         assertEq(cvault.rvTokensOwnedByUsersAtLastExtraction(), 1e18);
@@ -1134,8 +1134,17 @@ contract CharityVaultTest is DSTestPlus {
         // Mock a withdraw and check the parameters //
         cvault.extractInterestToCharity();
 
+        // Verify balances before withdrawal //
+        assertEq(cvault.balanceOfUnderlying(address(this)), 1e18 + userInterestEarned);
+        assertEq(underlying.balanceOf(address(this)), 0);
+
         // Finally, withdraw //
         cvault.withdraw(1e18 + userInterestEarned);
+
+        // Verify balances after withdrawal //
+        assertEq(vault.balanceOf(address(this)), 0);
+        assertEq(cvault.balanceOf(address(this)), 2);
+        assertEq(cvault.balanceOfUnderlying(address(this)), 1);
         assertEq(
             underlying.balanceOf(address(this)),
             1e18 + userInterestEarned
@@ -1144,25 +1153,6 @@ contract CharityVaultTest is DSTestPlus {
         // Try to extract interest to charity //
         cvault.withdrawInterestToCharity();
         assertEq(underlying.balanceOf(caddress), charityInterestEarned);
-
-        // Remove 10% from underlying balance //
-        // cvault.withdraw(earnings.fmul(9, BASE_UNIT).fdiv(10, BASE_UNIT));
-
-        // // This should have the correct balance
-        // assertEq(underlying.balanceOf(address(this)), 1428571428571428571);
-
-        // assertEq(vault.exchangeRate(), 1428571428571428580);
-        // assertEq(vault.totalStrategyHoldings(), 70714285714285715);
-        // assertEq(vault.totalHoldings(), 71428571428571429);
-        // assertEq(vault.totalFloat(), 714285714285714);
-        // assertEq(vault.balanceOf(address(vault)), 0.05e18);
-        // assertEq(vault.totalSupply(), 0.05e18);
-        // assertEq(vault.balanceOfUnderlying(address(vault)), 71428571428571429);
-
-        // // Verify correct Vault and CVault Balances
-        // assertEq(vault.balanceOf(address(this)), 0);
-        // assertEq(vault.balanceOfUnderlying(address(this)), 0);
-        // assertEq(cvault.balanceOf(address(this)), 0);
     }
 
     function _testProfitableStrategyMultipleCharityWithdraws() public {
