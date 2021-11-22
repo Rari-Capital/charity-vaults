@@ -200,22 +200,20 @@ contract CharityVault is ERC20, Auth {
         // If pricePerShareNow <= pricePerShareAtLastExtraction, return 0
         if (pricePerShareNow <= pricePerShareAtLastExtraction) return 0;
 
-        // Get amount of underlying tokens earned by vault users since last extraction (before subtracting the quantity going to charity)
-        uint256 underlyingEarnedByUsersSinceLastExtraction = 
-            rvTokensOwnedByUsersAtLastExtraction() *
-            (pricePerShareNow - pricePerShareAtLastExtraction) /
+        // Get amount of underlying tokens earned by vault users since last extraction
+        // (before subtracting the quantity going to charity)
+        uint256 underlyingEarnedByUsersSinceLastExtraction = (rvTokensOwnedByUsersAtLastExtraction() *
+                (pricePerShareNow - pricePerShareAtLastExtraction)) / BASE_UNIT;
+
+        uint256 underlyingToCharity = (underlyingEarnedByUsersSinceLastExtraction *
+                BASE_FEE) / 100;
+
+        underlyingToCharity +=
+            ((rvTokensEarnedByCharity - rvTokensClaimedByCharity) *
+                (pricePerShareNow - pricePerShareAtLastExtraction)) /
             BASE_UNIT;
-            
-        uint256 underlyingToCharity = (underlyingEarnedByUsersSinceLastExtraction * BASE_FEE) / 100;
 
-        underlyingToCharity += (rvTokensEarnedByCharity - rvTokensClaimedByCharity)
-            * (pricePerShareNow - pricePerShareAtLastExtraction)
-            / BASE_UNIT;
-
-        return underlyingToCharity.fdiv(
-            pricePerShareNow,
-            VAULT.BASE_UNIT()
-        );
+        return underlyingToCharity.fdiv(pricePerShareNow, VAULT.BASE_UNIT());
     }
 
     /// @dev Extracts and withdraws unclaimed interest earned by charity.
@@ -256,7 +254,9 @@ contract CharityVault is ERC20, Auth {
     function getRVTokensEarnedByCharity() public view returns (uint256) {
         uint256 pricePerShareNow = VAULT.exchangeRate();
         if (pricePerShareAtLastExtraction == 0) return 0;
-        return rvTokensEarnedByCharity + rvTokensToCharitySinceLastExtraction(pricePerShareNow);
+        return
+            rvTokensEarnedByCharity +
+            rvTokensToCharitySinceLastExtraction(pricePerShareNow);
     }
 
     /// @dev Returns how much interest a charity has earned but not claimed
@@ -319,11 +319,17 @@ contract CharityVault is ERC20, Auth {
         }
 
         pricePerShareAtLastExtraction = pricePerShareNow;
-        rvTokensEarnedByCharity += rvTokensToCharitySinceLastExtraction(pricePerShareNow);
+        rvTokensEarnedByCharity += rvTokensToCharitySinceLastExtraction(
+            pricePerShareNow
+        );
     }
 
     // Returns the exchange rate of rcvTokens in terms of rvTokens since the last extraction.
-    function rcvRvExchangeRateAtLastExtraction() internal view returns (uint256) {
+    function rcvRvExchangeRateAtLastExtraction()
+        internal
+        view
+        returns (uint256)
+    {
         // If there are no rcvTokens in circulation, return an exchange rate of 1:1.
         if (totalSupply == 0) return BASE_UNIT;
 
@@ -339,7 +345,8 @@ contract CharityVault is ERC20, Auth {
         if (totalSupply == 0) return BASE_UNIT;
 
         // Get rvTokens currently owned by users
-        uint256 rvTokensOwnedByUsers = VAULT.balanceOf(address(this)) - getRVTokensUnclaimedByCharity();
+        uint256 rvTokensOwnedByUsers = VAULT.balanceOf(address(this)) -
+            getRVTokensUnclaimedByCharity();
 
         // TODO: Optimize double SLOAD of totalSupply here?
         // Calculate the exchange rate by diving the total holdings by the rcvToken supply.
