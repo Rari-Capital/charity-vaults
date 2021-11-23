@@ -196,13 +196,11 @@ contract CharityVault is ERC20, Auth {
             vaultEr,
             BASE_UNIT
         );
-        uint256 rcvTokenClaim = rvTokenClaim.fdiv(
-            cVaultEr,
-            BASE_UNIT
-        );
 
+        // Note: we don't need to burn rcvTokens since we never mint to the charity
         // This will revert if the charity does not have enough rcvTokens.
-        _burn(msg.sender, rcvTokenClaim);
+        // uint256 rcvTokenClaim = rvTokenClaim.fdiv(cVaultEr, BASE_UNIT);
+        // _burn(msg.sender, rcvTokenClaim);
 
         /// Redeem and transfer
         VAULT.redeem(rvTokenClaim);
