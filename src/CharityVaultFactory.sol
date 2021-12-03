@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity ^0.8.9;
+pragma solidity ^0.8.10;
 
 import {Auth, Authority} from "solmate/auth/Auth.sol";
-import {ERC20} from "solmate/erc20/ERC20.sol";
+import {ERC20} from "solmate/tokens/ERC20.sol";
 import {Bytes32AddressLib} from "solmate/utils/Bytes32AddressLib.sol";
 import {VaultFactory} from "vaults/VaultFactory.sol";
 
@@ -17,7 +17,7 @@ contract CharityVaultFactory is Auth(msg.sender, Authority(address(0))) {
     /// @dev we need to store a vaultFactory to fetch existing Vaults
     /// @dev immutable instead of constant so we can set VAULT_FACTORY in the constructor
     // solhint-disable-next-line var-name-mixedcase
-    VaultFactory private immutable VAULT_FACTORY;
+    VaultFactory public immutable VAULT_FACTORY;
 
     /// @notice Creates a new CharityVaultFactory
     /// @param _address the address of the VaultFactory

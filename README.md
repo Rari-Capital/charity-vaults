@@ -20,7 +20,7 @@ make test
 
 ### Credits
 
--   [t11s](https://twitter.com/transmissions11), [Jet Jadeja](https://twitter.com/JetJadeja), and [David Lucid](https://twitter.com/davidlucid) for the exceptional guidance.
+-   [t11s](https://twitter.com/transmissions11), [Jet Jadeja](https://twitter.com/JetJadeja), and [David Lucid](https://twitter.com/davidlucid) for the exceptional guidance and contributions.
 -   [Georgios Konstantopoulos](https://github.com/gakonst) for the amazing [dapptools-template](https://github.com/gakonst/dapptools-template) resource.
 
 ### Generate Pretty Visuals
@@ -31,11 +31,11 @@ Run `npm run visualize` to generate an amalgamated contract visualization in the
 
 ##### CharityVault.sol
 
-Run `surya graph -s src/CharityVault.sol | dot -Tpng > assets/CharityVault.png`
+Run `surya graph src/CharityVault.sol | dot -Tpng > assets/CharityVault.png`
 
 #### CharityVaultFactory.sol
 
-Run `surya graph -s src/CharityVaultFactory.sol | dot -Tpng > assets/CharityVaultFactory.png`
+Run `surya graph src/CharityVaultFactory.sol | dot -Tpng > assets/CharityVaultFactory.png`
 
 ## Deploying
 
@@ -71,37 +71,87 @@ ETH_FROM=0x3538b6eF447f244268BCb2A0E1796fEE7c45002D make deploy-rinkeby
 
 ### Goerli
 
-#### Pre-deploys
+To deploy, the contracts have to be built by running the `dapp build` command.
 
-VaultFactory was deployed to `0x8b5842a935731ed1b92e3211a7f38bebd185eb53` on [Goerli](https://goerli.etherscan.io/address/0x8b5842a935731ed1b92e3211a7f38bebd185eb53) using the following command in the [vaults](./lib/vaults) subdir:
+#### TrustAuthority
+
+TrustAuthority was deployed to `0xef619040fc0ff9a21b42fabe031af716610df0d7` on [Goerli](https://goerli.etherscan.io/address/0xef619040fc0ff9a21b42fabe031af716610df0d7) using the following command in the [solmate](./lib/solmate) subdir:
+
+```sh
+ETH_FROM=xxxx ETH_RPC_URL=xxxx ETH_GAS=xxxx dapp create src/auth/authorities/TrustAuthority.sol:TrustAuthority <ETH_FROM> --verify
+```
+
+Then verified with:
+
+```sh
+ETH_FROM=xxxx ETH_RPC_URL=xxxx ETH_GAS=xxxx dapp verify-contract src/auth/authorities/TrustAuthority.sol:TrustAuthority 0xef619040fc0ff9a21b42fabe031af716610df0d7 <ETH_FROM>
+```
+
+#### VaultFactory
+
+VaultFactory was deployed to `0x57d0721bb6021e821ab98925007534aed16ecb12` on [Goerli](https://goerli.etherscan.io/address/0x57d0721bb6021e821ab98925007534aed16ecb12) using the following command in the [vaults](./lib/vaults) subdir:
+
+```sh
+ETH_FROM=xxxx ETH_RPC_URL=xxxx ETH_GAS=xxxx dapp create src/VaultFactory.sol:VaultFactory <ETH_FROM> 0xeF619040fC0ff9A21B42fAbe031aF716610Df0D7 --verify
+```
+
+Then verified with:
 
 ```
-ETH_FROM=xxxx ETH_RPC_URL=xxxx ETH_GAS=xxxx dapp create VaultFactory --verify
+ETH_FROM=xxxx ETH_RPC_URL=xxxx ETH_GAS=xxxx dapp verify-contract ./src/VaultFactory.sol:VaultFactory 0x57d0721bb6021e821ab98925007534aed16ecb12 <ETH_FROM> 0xeF619040fC0ff9A21B42fAbe031aF716610Df0D7
 ```
 
-A Vault for [Goerli USDC](https://goerli.etherscan.io/token/0x5ffbac75efc9547fbc822166fed19b05cd5890bb) (`0x5ffbac75efc9547fbc822166fed19b05cd5890bb`) Vault was deployed to `0x256Df578846117A15106F1F0e99155afF5E76d66` using the `deployVault` permissionless function in the `VaultFactory` on [Goerli Etherscan](https://goerli.etherscan.io/address/0x256Df578846117A15106F1F0e99155afF5E76d66).
+Set the Authority on the VaultFactory with the `setAuthority` function and the `TrustAuthority` address: [`0xeF619040fC0ff9A21B42fAbe031aF716610Df0D7`](https://goerli.etherscan.io/address/0xeF619040fC0ff9A21B42fAbe031aF716610Df0D7)
+
+
+#### Vault
+
+Used Goerli Fake USD: [0xb983C7a6f63623743CeB2F485118a37C9f77d2a0](https://goerli.etherscan.io/address/0xb983C7a6f63623743CeB2F485118a37C9f77d2a0)
+
+Vault was deployed to [`0x05F119002D5520B9cE6d62DA89AE5B23020B5d89`](https://goerli.etherscan.io/address/0x05F119002D5520B9cE6d62DA89AE5B23020B5d89) using the `deployVault` permissionless function in the `VaultFactory` (above).
 
 Since we can't pass the `--verify` flag, we have to verify the Vault contract using dapptools `verify-contract` command as such.
 
 ```
-ETH_FROM=xxxx ETH_RPC_URL=xxxx ETH_GAS=xxxx dapp verify-contract src/Vault.sol:Vault 0x256Df578846117A15106F1F0e99155afF5E76d66 0x5ffbac75efc9547fbc822166fed19b05cd5890bb
+ETH_FROM=xxxx ETH_RPC_URL=xxxx ETH_GAS=xxxx dapp verify-contract src/Vault.sol:Vault 0x05F119002D5520B9cE6d62DA89AE5B23020B5d89 0xb983C7a6f63623743CeB2F485118a37C9f77d2a0
 ```
 
-NOTE: we have to pass in the address of USDC (0x5ffbac75efc9547fbc822166fed19b05cd5890bb) since it is an argument in the Vault constructor
+NOTE: we have to pass in the address of the Fake USD (0xb983C7a6f63623743CeB2F485118a37C9f77d2a0) since it is an argument in the Vault constructor
 
-Deployed & Verified [CharityVaultFactory](https://goerli.etherscan.io/address/0x293e3a98cc905e759edb07d579fa2cdb24941575): `0x293e3a98CC905e759EDB07d579fa2Cdb24941575`
+Set the Authority on the VaultFactory with the `setAuthority` function and the `TrustAuthority` address: [`0xeF619040fC0ff9A21B42fAbe031aF716610Df0D7`](https://goerli.etherscan.io/address/0xeF619040fC0ff9A21B42fAbe031aF716610Df0D7)
+
+#### CharityVaultFactory
+
+Deployed & Verified Charity Vault Factory [`0x8c50a6a21be7375026d0412be3b2c933e2055bcc`](https://goerli.etherscan.io/address/0x8c50a6a21be7375026d0412be3b2c933e2055bcc): `0x8c50a6a21be7375026d0412be3b2c933e2055bcc`
+
+```sh
+ETH_FROM=xxxx ETH_RPC_URL=xxxx ETH_GAS=xxxx dapp create src/CharityVaultFactory.sol:CharityVaultFactory 0x57d0721bb6021e821ab98925007534aed16ecb12 --verify
+```
+
+Verified With:
+
+```sh
+ETH_FROM=xxxx ETH_RPC_URL=xxxx ETH_GAS=xxxx dapp verify-contract src/CharityVaultFactory.sol:CharityVaultFactory 0x8c50a6a21be7375026d0412be3b2c933e2055bcc 0x57d0721bb6021e821ab98925007534aed16ecb12 --verify
+```
+
+Set the Authority on the VaultFactory with the `setAuthority` function and the `TrustAuthority` address: [`0xeF619040fC0ff9A21B42fAbe031aF716610Df0D7`](https://goerli.etherscan.io/address/0xeF619040fC0ff9A21B42fAbe031aF716610Df0D7)
+
+#### CharityVault
+
+Used Goerli Fake USD: [0xb983C7a6f63623743CeB2F485118a37C9f77d2a0](https://goerli.etherscan.io/address/0xb983C7a6f63623743CeB2F485118a37C9f77d2a0)
 
 Using the `deployCharityVault` function we can then deploy a CharityVault with the parameters:
 
--   _underlying_: `0x5ffbac75efc9547fbc822166fed19b05cd5890bb` (USDC)
+-   _underlying_: `0xb983C7a6f63623743CeB2F485118a37C9f77d2a0` (USDC)
 -   _charity_: `0x05AB381A007A90E541433f3DC574AcD3E389f898` (random address interest is sent to)
 -   _feePercent_: `5` (fee percent - 5%)
-    Deployed & Verified [CharityVault for USDC Vault](https://goerli.etherscan.io/address/0xdb5c97dfadcd4928b8c4f6e9a7766d93b6788acb): `0xdb5c97dfadcd4928b8c4f6e9a7766d93b6788acb`
 
-For reference, used the command:
+Deployed & Verified Charity Vault [0x3Ad5B46BA68A0F4F81fA584ffb15EEaA1A2aE788](https://goerli.etherscan.io/address/0x3Ad5B46BA68A0F4F81fA584ffb15EEaA1A2aE788)
+
+To verify the CharityVault, we run the command:
 
 ```sh
-dapp verify-contract src/CharityVault.sol:CharityVault 0xdb5c97dfadcd4928b8c4f6e9a7766d93b6788acb 0x5ffbac75efc9547fbc822166fed19b05cd5890bb 0x05AB381A007A90E541433f3DC574AcD3E389f898 5 0x256Df578846117A15106F1F0e99155afF5E76d66
+ETH_FROM=xxxx ETH_RPC_URL=xxxx ETH_GAS=xxxx dapp verify-contract src/CharityVault.sol:CharityVault 0x3Ad5B46BA68A0F4F81fA584ffb15EEaA1A2aE788 0xb983C7a6f63623743CeB2F485118a37C9f77d2a0 0x05AB381A007A90E541433f3DC574AcD3E389f898 5 0x05F119002D5520B9cE6d62DA89AE5B23020B5d89
 ```
 
 Where the synatx is:
@@ -109,6 +159,28 @@ Where the synatx is:
 ```
 dapp verify-contract src/CharityVault.sol:CharityVault <deployed charity vault address> <underlying token address (USDC)> <charity address> <fee percent> <deployed vault address>
 ```
+
+Set the Authority on the VaultFactory with the `setAuthority` function and the `TrustAuthority` address: [`0xeF619040fC0ff9A21B42fAbe031aF716610Df0D7`](https://goerli.etherscan.io/address/0xeF619040fC0ff9A21B42fAbe031aF716610Df0D7)
+
+#### Mock CharityVaultStrategy
+
+Used Goerli Fake USD: [0xb983C7a6f63623743CeB2F485118a37C9f77d2a0](https://goerli.etherscan.io/address/0xb983C7a6f63623743CeB2F485118a37C9f77d2a0)
+
+Deployed CharityVaultStrategy at [0xfc2004ee942c2483ce5efac20ca8f9ee6c838790](https://goerli.etherscan.io/address/0xfc2004ee942c2483ce5efac20ca8f9ee6c838790)
+
+Deployed with:
+
+```sh
+ETH_FROM=xxxx ETH_RPC_URL=xxxx ETH_GAS=xxxx dapp create src/tests/mocks/CharityVaultMockStrategy.sol:CharityVaultMockStrategy 0xb983C7a6f63623743CeB2F485118a37C9f77d2a0 --verify
+```
+
+Verified with:
+
+```sh
+ETH_FROM=xxxx ETH_RPC_URL=xxxx ETH_GAS=xxxx dapp verify-contract src/tests/mocks/CharityVaultMockStrategy.sol:CharityVaultMockStrategy 0xfc2004ee942c2483ce5efac20ca8f9ee6c838790 0xb983C7a6f63623743CeB2F485118a37C9f77d2a0
+```
+
+Then we trust the strategy from the vault at [0x05F119002D5520B9cE6d62DA89AE5B23020B5d89](https://goerli.etherscan.io/address/0x05F119002D5520B9cE6d62DA89AE5B23020B5d89#writeContract) using the `trustStrategy` method with the previously deployed CharityVaultStrategy address (0xfc2004ee942c2483ce5efac20ca8f9ee6c838790) as the parameter.
 
 #### Execute
 
