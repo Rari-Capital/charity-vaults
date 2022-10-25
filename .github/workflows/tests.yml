@@ -1,13 +1,13 @@
 name: Tests
 
-on:
-    push:
-        branches:
-            - main
-            - develop
-    pull_request:
-        branches:
-            - main
+# on:
+#     push:
+#         branches:
+#             - main
+#             - develop
+#     pull_request:
+#         branches:
+#             - main
 
 defaults:
     run:
